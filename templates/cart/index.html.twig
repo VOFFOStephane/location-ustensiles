@@ -1,0 +1,62 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Panier{% endblock %}
+
+{% block body %}
+    <h1>Mon panier</h1>
+
+    {% if cart.lines is empty %}
+        <p>Votre panier est vide.</p>
+    {% else %}
+
+        <table border="1" cellpadding="8">
+            <thead>
+            <tr>
+                <th>Produit</th>
+                <th>Dates</th>
+                <th>Jours</th>
+                <th>Quantité</th>
+                <th>Total location</th>
+                <th>Total caution</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for line in cart.lines %}
+                <tr>
+                    <td>{{ line.product.name }}</td>
+                    <td>{{ line.startDate|date('Y-m-d') }} → {{ line.endDate|date('Y-m-d') }}</td>
+                    <td>{{ line.days }}</td>
+
+                    <td>
+                        <form method="post" action="{{ path('cart_update', {key: line.key}) }}">
+                            <label>
+                                <input type="number" name="quantity" value="{{ line.quantity }}" min="1">
+                            </label>
+                            <button type="submit">OK</button>
+                        </form>
+                    </td>
+
+                    <td>{{ line.lineRentalTotal }} €</td>
+                    <td>{{ line.lineDepositTotal }} €</td>
+
+                    <td>
+                        <form method="post" action="{{ path('cart_remove', {key: line.key}) }}">
+                            <button type="submit">Supprimer</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <p><strong>Total location :</strong> {{ cart.rentalTotal }} €</p>
+        <p><strong>Total caution :</strong> {{ cart.depositTotal }} €</p>
+        <p><strong>Total (location + caution) :</strong> {{ cart.grandTotalNow }} €</p>
+
+        <form method="post" action="{{ path('cart_clear') }}">
+            <button type="submit">Vider le panier</button>
+        </form>
+
+    {% endif %}
+{% endblock %}

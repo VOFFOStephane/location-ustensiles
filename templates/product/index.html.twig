@@ -1,0 +1,34 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Catalogue{% endblock %}
+
+{% block body %}
+    <h1>Catalogue (test)</h1>
+
+    {% for product in products %}
+        <div style="border:1px solid #ddd; padding:10px; margin-bottom:10px;">
+            <strong>{{ product.name }}</strong><br>
+            Prix/jour : {{ product.pricePerDay }} €<br>
+            Caution : {{ product.depositUnit }} €<br>
+            Stock total : {{ product.quantityTotal }}<br>
+
+            <form method="post" action="{{ path('cart_add', {id: product.id}) }}" style="margin-top:10px;">
+                <label>Début</label>
+                <input type="date" name="startDate" required>
+
+                <label>Fin</label>
+                <input type="date" name="endDate" required>
+
+                <label>Qté</label>
+                <input type="number" name="quantity" value="1" min="1" required>
+
+                <button type="submit">Ajouter au panier</button>
+            </form>
+        </div>
+    {% else %}
+        <p>Aucun produit.</p>
+    {% endfor %}
+
+    <p><a href="{{ path('cart_index') }}">Voir le panier</a></p>
+{% endblock %}
+
