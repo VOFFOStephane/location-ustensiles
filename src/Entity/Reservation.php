@@ -14,6 +14,11 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class Reservation
 {
+    public const STATUS_PENDING = 'PENDING';
+    public const STATUS_VALIDATED = 'VALIDATED';
+    public const STATUS_CANCELLED = 'CANCELLED';
+    public const STATUS_IN_PROGRESS = 'IN_PROGRESS';
+    public const STATUS_COMPLETED = 'COMPLETED';
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -58,6 +63,9 @@ class Reservation
     #[ORM\ManyToOne(inversedBy: 'reservations')]
     #[ORM\JoinColumn(nullable: false)]
     private ?User $user = null;
+
+
+
 
     /**
      * @var Collection<int, ReservationItem>
@@ -233,8 +241,9 @@ class Reservation
 
         // valeur par défaut utile
         if ($this->status === null) {
-            $this->status = 'PENDING';
+            $this->status = self::STATUS_PENDING;
         }
+
     }
 
     #[ORM\PreUpdate]
@@ -267,5 +276,16 @@ class Reservation
             // orphanRemoval=true va supprimer l'item, pas besoin de nuller la FK
         return $this;
     }
+    //fonctions helpers
+    public function isPending(): bool
+    {
+        return $this->status === self::STATUS_PENDING;
+    }
+
+    public function isValidated(): bool
+    {
+        return $this->status === self::STATUS_VALIDATED;
+    }
+
 
 }
