@@ -1,0 +1,58 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mes réservations{% endblock %}
+
+{% block body %}
+    <h1>Mes réservations</h1>
+
+    {% if reservations is empty %}
+        <p>Aucune réservation.</p>
+    {% else %}
+
+        {% set labels = {
+            'PENDING': 'En attente',
+            'VALIDATED': 'Validée',
+            'IN_PROGRESS': 'En cours',
+            'COMPLETED': 'Terminée',
+            'CANCELLED': 'Annulée'
+        } %}
+
+        <table border="1" cellpadding="8">
+            <thead>
+            <tr>
+                <th>Référence</th>
+                <th>Créée le</th>
+                <th>Dates</th>
+                <th>Jours</th>
+                <th>Statut</th>
+                <th>Total location</th>
+                <th>Total caution</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            {% for r in reservations %}
+                {% set days = r.startDate.diff(r.endDate).days + 1 %}
+                <tr>
+                    <td>{{ r.reference }}</td>
+                    <td>{{ r.createdAt ? r.createdAt|date('Y-m-d H:i') : '-' }}</td>
+                    <td>{{ r.startDate|date('Y-m-d') }} → {{ r.endDate|date('Y-m-d') }}</td>
+                    <td>{{ days }}</td>
+                    <td>{{ labels[r.status]|default(r.status) }}</td>
+                    <td>{{ r.rentalTotal }} €</td>
+                    <td>{{ r.depositTotal }} €</td>
+
+                    <td>
+                        {# on le branchera ensuite #}
+
+                        <a href="{{ path('reservation_show', {id: r.id}) }}">Voir</a>
+
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+    {% endif %}
+{% endblock %}

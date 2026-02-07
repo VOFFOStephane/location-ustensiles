@@ -16,28 +16,17 @@ class ProductRepository extends ServiceEntityRepository
         parent::__construct($registry, Product::class);
     }
 
-    //    /**
-    //     * @return Product[] Returns an array of Product objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('p')
-    //            ->andWhere('p.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('p.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    public function findOneForUserWithItems(int $reservationId, int $userId): ?\App\Entity\Reservation
+    {
+        return $this->createQueryBuilder('r')
+            ->leftJoin('r.items', 'i')->addSelect('i')
+            ->leftJoin('i.product', 'p')->addSelect('p')
+            ->andWhere('r.id = :rid')
+            ->andWhere('r.user = :uid')
+            ->setParameter('rid', $reservationId)
+            ->setParameter('uid', $userId)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 
-    //    public function findOneBySomeField($value): ?Product
-    //    {
-    //        return $this->createQueryBuilder('p')
-    //            ->andWhere('p.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
 }

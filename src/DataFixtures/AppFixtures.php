@@ -35,11 +35,22 @@ class AppFixtures extends Fixture
         $client->setRoles(['ROLE_USER']);
 
         $client->setPassword(
-            $this->passwordHasher->hashPassword($client, 'Password123!')
+            $this->passwordHasher->hashPassword($client, 'Password123')
+        );
+
+        $client2 = new User();
+        $client2->setEmail('client@test2.com');
+        $client2->setFirstname('Client2');
+        $client2->setLastname('Test2');
+        $client2->setRoles(['ROLE_USER']);
+
+        $client2->setPassword(
+            $this->passwordHasher->hashPassword($client2, 'Password123')
         );
 
         $manager->persist($admin);
         $manager->persist($client);
+        $manager->persist($client2);
 
         // --- CATEGORIES ---
         $cat1 = new Category();

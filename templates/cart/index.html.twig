@@ -30,9 +30,16 @@
 
                     <td>
                         <form method="post" action="{{ path('cart_update', {key: line.key}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('cart_update_' ~ line.key) }}">
+
                             <label>
-                                <input type="number" name="quantity" value="{{ line.quantity }}" min="1">
+                                <input type="number"
+                                       name="quantity"
+                                       value="{{ line.quantity }}"
+                                       min="1"
+                                       required>
                             </label>
+
                             <button type="submit">OK</button>
                         </form>
                     </td>
@@ -42,6 +49,8 @@
 
                     <td>
                         <form method="post" action="{{ path('cart_remove', {key: line.key}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('cart_remove_' ~ line.key) }}">
+
                             <button type="submit">Supprimer</button>
                         </form>
                     </td>
@@ -54,9 +63,20 @@
         <p><strong>Total caution :</strong> {{ cart.depositTotal }} €</p>
         <p><strong>Total (location + caution) :</strong> {{ cart.grandTotalNow }} €</p>
 
+        {# CHECKOUT #}
+        <form method="post" action="{{ path('reservation_checkout') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('checkout') }}">
+            <button type="submit" class="btn btn-primary">
+                Valider la réservation
+            </button>
+        </form>
+
+        {# CLEAR #}
         <form method="post" action="{{ path('cart_clear') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('cart_clear') }}">
             <button type="submit">Vider le panier</button>
         </form>
 
     {% endif %}
 {% endblock %}
+

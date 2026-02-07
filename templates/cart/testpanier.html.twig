@@ -1,12 +1,21 @@
-<form method="post" action="{{ path('cart_add', {id: product.id}) }}">
-    <label>
-        <input type="date" name="startDate" required>
-    </label>
-    <label>
-        <input type="date" name="endDate" required>
-    </label>
-    <label>
-        <input type="number" name="quantity" value="1" min="1">
-    </label>
-    <button type="submit">Ajouter au panier</button>
-</form>
+{% for product in products %}
+    <form method="post" action="{{ path('cart_add', {id: product.id}) }}">
+        <input type="hidden" name="_token" value="{{ csrf_token('cart_add_' ~ product.id) }}">
+
+        {% set today = "now"|date("Y-m-d") %}
+        <label>
+            <input type="date" name="startDate" min="{{ today }}" required>
+        </label>
+
+        <label>
+            <input type="date" name="endDate" min="{{ today }}" required>
+        </label>
+
+        <label>
+            <input type="number" name="quantity" value="1" min="1" required>
+        </label>
+
+        <button type="submit">Ajouter au panier</button>
+    </form>
+{% endfor %}
+

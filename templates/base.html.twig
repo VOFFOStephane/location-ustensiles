@@ -11,7 +11,28 @@
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
     </head>
+    <script>
+        setTimeout(() => {
+            document.querySelectorAll('[data-flash]').forEach(el => {
+                el.style.transition = 'opacity 0.4s ease';
+                el.style.opacity = '0';
+                setTimeout(() => el.remove(), 450);
+            });
+        }, 5000); // 5 secondes
+    </script>
+
     <body>
-        {% block body %}{% endblock %}
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="flash flash-{{ type }}" data-flash>
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+
+    {% block body %}
+
+        {% endblock %}
     </body>
 </html>

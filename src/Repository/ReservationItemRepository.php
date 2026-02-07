@@ -2,6 +2,8 @@
 
 namespace App\Repository;
 
+use App\Entity\Product;
+use App\Entity\Reservation;
 use App\Entity\ReservationItem;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -16,28 +18,48 @@ class ReservationItemRepository extends ServiceEntityRepository
         parent::__construct($registry, ReservationItem::class);
     }
 
-    //    /**
-    //     * @return ReservationItem[] Returns an array of ReservationItem objects
-    //     */
-    //    public function findByExampleField($value): array
-    //    {
-    //        return $this->createQueryBuilder('r')
-    //            ->andWhere('r.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->orderBy('r.id', 'ASC')
-    //            ->setMaxResults(10)
-    //            ->getQuery()
-    //            ->getResult()
-    //        ;
-    //    }
+    public function getReservedQuantityForPeriod(
+        int $productId,
+        \DateTimeImmutable $start,
+        \DateTimeImmutable $end,
+        array $blockingStatuses
+    ): int {
+        $qb = $this->createQueryBuilder('ri')
+            ->select('COALESCE(SUM(ri.quantity), 0)')
+            ->innerJoin('ri.reservation', 'r')
+            ->where('IDENTITY(ri.product) = :pid')
+            ->andWhere('r.status IN (:statuses)')
+            // chevauchement de dates : start <= end2 AND end >= start2
+            ->andWhere('r.startDate <= :end')
+            ->andWhere('r.endDate >= :start')
+            ->setParameter('pid', $productId)
+            ->setParameter('statuses', $blockingStatuses)
+            ->setParameter('start', $start)
+            ->setParameter('end', $end);
 
-    //    public function findOneBySomeField($value): ?ReservationItem
-    //    {
-    //        return $this->createQueryBuilder('r')
-    //            ->andWhere('r.exampleField = :val')
-    //            ->setParameter('val', $value)
-    //            ->getQuery()
-    //            ->getOneOrNullResult()
-    //        ;
-    //    }
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+
+    public function getReservedQuantityForProduct(
+        Product $product,
+        \DateTimeImmutable $start,
+        \DateTimeImmutable $end
+    ): int {
+        $qb = $this->createQueryBuilder('ri')
+            ->select('COALESCE(SUM(ri.quantity), 0)')
+            ->innerJoin('ri.reservation', 'r')
+            ->andWhere('ri.product = :product')
+            ->andWhere('r.status IN (:statuses)')
+            // chevauchement de dates : [start,end] overlap [r.startDate,r.endDate]
+            ->andWhere('r.startDate <= :end')
+            ->andWhere('r.endDate >= :start')
+            ->setParameter('product', $product)
+            ->setParameter('statuses', Reservation::BLOCKING_STATUSES)
+            ->setParameter('start', $start)
+            ->setParameter('end', $end);
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
 }

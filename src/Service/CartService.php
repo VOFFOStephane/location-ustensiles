@@ -2,13 +2,11 @@
 
 namespace App\Service;
 
-use App\Entity\Reservation;
+use App\Service\AvailabilityService;
 use App\Entity\ReservationItem;
 use App\Repository\ProductRepository;
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
-
-
+use Symfony\Component\HttpFoundation\Session\SessionInterface;
 
 final class CartService
 {
@@ -19,7 +17,8 @@ final class CartService
     public function __construct(
         RequestStack $requestStack,
         private readonly ProductRepository $productRepository,
-        private readonly ReservationCalculator $calculator
+        private readonly ReservationCalculator $calculator,
+        private readonly AvailabilityService $availability,
     ) {
         $session = $requestStack->getSession();
         if (!$session) {
@@ -28,55 +27,141 @@ final class CartService
         $this->session = $session;
     }
 
+    private function getCart(): array
+    {
+        return $this->session->get(self::SESSION_KEY, [
+            'startDate' => null,
+            'endDate'   => null,
+            'items'     => [],
+        ]);
+    }
 
-    /**
-     * Un item = produit + quantité + dates.
-     * On stocke des données scalaires en session.
-     */
+    private function saveCart(array $cart): void
+    {
+        $this->session->set(self::SESSION_KEY, $cart);
+    }
+
     public function add(int $productId, int $quantity, \DateTimeImmutable $start, \DateTimeImmutable $end): void
     {
         if ($quantity <= 0) {
             throw new \InvalidArgumentException('Quantité invalide');
         }
 
-        // clé unique (permet d’avoir le même produit avec d’autres dates)
-        $key = $this->makeKey($productId, $start, $end);
+        // panier global
+        $cart = $this->session->get(self::SESSION_KEY, [
+            'startDate' => null,
+            'endDate'   => null,
+            'items'     => [],
+        ]);
 
-        $items = $this->session->get(self::SESSION_KEY, []);
+        $startStr = $start->format('Y-m-d');
+        $endStr   = $end->format('Y-m-d');
 
-        if (isset($items[$key])) {
-            $items[$key]['quantity'] += $quantity;
+        // Option A : dates globales obligatoires
+        if (!empty($cart['startDate']) && !empty($cart['endDate'])) {
+            if ($cart['startDate'] !== $startStr || $cart['endDate'] !== $endStr) {
+                throw new \InvalidArgumentException(
+                    "Ton panier est déjà pour {$cart['startDate']} → {$cart['endDate']}. Vide le panier pour changer les dates."
+                );
+            }
         } else {
-            $items[$key] = [
+            $cart['startDate'] = $startStr;
+            $cart['endDate']   = $endStr;
+        }
+
+        // ✅ Vérification disponibilité (BD) sur la période
+        $availableInDb = $this->availability->getAvailableQuantity($productId, $start, $end);
+
+        // ✅ Quantité déjà dans le panier pour ce produit
+        $alreadyInCart = $this->getQuantityInCartForProduct($cart, $productId);
+
+        // ✅ Quantité totale demandée (panier + nouvelle demande)
+        $wantedTotal = $alreadyInCart + $quantity;
+
+        if ($wantedTotal > $availableInDb) {
+            throw new \InvalidArgumentException(
+                "Stock insuffisant sur ces dates : demandé {$wantedTotal}, disponible {$availableInDb}."
+            );
+        }
+
+        // clé simple : un produit ne peut apparaître qu'une fois (dates globales)
+        $key = (string) $productId;
+
+        if (isset($cart['items'][$key])) {
+            $cart['items'][$key]['quantity'] += $quantity;
+        } else {
+            $cart['items'][$key] = [
                 'productId' => $productId,
                 'quantity'  => $quantity,
-                'startDate' => $start->format('Y-m-d'),
-                'endDate'   => $end->format('Y-m-d'),
             ];
         }
 
-        $this->session->set(self::SESSION_KEY, $items);
+        $this->session->set(self::SESSION_KEY, $cart);
     }
+
 
     public function updateQuantity(string $key, int $quantity): void
     {
-        $items = $this->session->get(self::SESSION_KEY, []);
-        if (!isset($items[$key])) return;
+        $cart = $this->getCart();
 
-        if ($quantity <= 0) {
-            unset($items[$key]);
-        } else {
-            $items[$key]['quantity'] = $quantity;
+        if (!isset($cart['items'][$key])) {
+            return;
         }
 
-        $this->session->set(self::SESSION_KEY, $items);
+        // supprimer si quantité <= 0
+        if ($quantity <= 0) {
+            unset($cart['items'][$key]);
+
+            if (empty($cart['items'])) {
+                $cart['startDate'] = null;
+                $cart['endDate']   = null;
+            }
+
+            $this->saveCart($cart);
+            return;
+        }
+
+        if (empty($cart['startDate']) || empty($cart['endDate'])) {
+            throw new \RuntimeException('Panier corrompu : dates manquantes.');
+        }
+
+        $start = new \DateTimeImmutable($cart['startDate']);
+        $end   = new \DateTimeImmutable($cart['endDate']);
+
+        $productId = (int) $cart['items'][$key]['productId'];
+
+        $currentQty = (int) $cart['items'][$key]['quantity'];
+
+        // Stock dispo en BD (sans considérer le panier)
+        $availableInDb = $this->availability->getAvailableQuantity($productId, $start, $end);
+
+        // ✅ On autorise jusqu'à (stock restant + ce que moi j'avais déjà réservé dans le panier)
+        $maxAllowed = $availableInDb + $currentQty;
+
+        if ($quantity > $maxAllowed) {
+            throw new \InvalidArgumentException(
+                "Stock insuffisant sur ces dates : demandé {$quantity}, disponible {$maxAllowed}."
+            );
+        }
+
+        $cart['items'][$key]['quantity'] = $quantity;
+
+        $this->saveCart($cart);
     }
+
 
     public function remove(string $key): void
     {
-        $items = $this->session->get(self::SESSION_KEY, []);
-        unset($items[$key]);
-        $this->session->set(self::SESSION_KEY, $items);
+        $cart = $this->getCart();
+
+        unset($cart['items'][$key]);
+
+        if (empty($cart['items'])) {
+            $cart['startDate'] = null;
+            $cart['endDate'] = null;
+        }
+
+        $this->saveCart($cart);
     }
 
     public function clear(): void
@@ -84,45 +169,61 @@ final class CartService
         $this->session->remove(self::SESSION_KEY);
     }
 
-    /**
-     * Retourne une “vue” du panier avec produits hydratés + totaux calculés.
-     * @throws \Exception
-     */
     public function getSummary(): array
     {
-        $raw = $this->session->get(self::SESSION_KEY, []);
-        $cartLines = [];
+        $cart = $this->getCart();
 
         $rentalTotal = '0.00';
         $depositTotal = '0.00';
 
-        foreach ($raw as $key => $data) {
+        if (empty($cart['items'])) {
+            return [
+                'lines' => [],
+                'rentalTotal' => $rentalTotal,
+                'depositTotal' => $depositTotal,
+                'grandTotalNow' => '0.00',
+                'startDate' => null,
+                'endDate' => null,
+                'days' => 0,
+            ];
+        }
+
+        // dates globales
+        $start = new \DateTimeImmutable($cart['startDate']);
+        $end   = new \DateTimeImmutable($cart['endDate']);
+        $days  = $this->calculator->calculateDays($start, $end);
+
+        $cartLines = [];
+        $dirty = false;
+
+        foreach ($cart['items'] as $key => $data) {
             $product = $this->productRepository->find($data['productId']);
+
+            // si produit supprimé -> on nettoie la session
             if (!$product) {
+                unset($cart['items'][$key]);
+                $dirty = true;
                 continue;
             }
 
-            $start = new \DateTimeImmutable($data['startDate']);
-            $end   = new \DateTimeImmutable($data['endDate']);
-            $days  = $this->calculator->calculateDays($start, $end);
+            $qty = (int) $data['quantity'];
 
-            // On utilise ReservationItem pour garder une logique uniforme
             $item = new ReservationItem();
             $item->setProduct($product);
-            $item->setQuantity((int) $data['quantity']);
+            $item->setQuantity($qty);
             $item->setUnitPrice($product->getPricePerDay());
             $item->setUnitDeposit($product->getDepositUnit());
 
-            $lineRental  = bcmul(bcmul($item->getUnitPrice(), (string) $item->getQuantity(), 2), (string) $days, 2);
-            $lineDeposit = bcmul($item->getUnitDeposit(), (string) $item->getQuantity(), 2);
+            $lineRental  = bcmul(bcmul($item->getUnitPrice(), (string) $qty, 2), (string) $days, 2);
+            $lineDeposit = bcmul($item->getUnitDeposit(), (string) $qty, 2);
 
-            $rentalTotal = bcadd($rentalTotal, $lineRental, 2);
+            $rentalTotal  = bcadd($rentalTotal, $lineRental, 2);
             $depositTotal = bcadd($depositTotal, $lineDeposit, 2);
 
             $cartLines[] = [
-                'key' => $key,
+                'key' => (string) $key,
                 'product' => $product,
-                'quantity' => $item->getQuantity(),
+                'quantity' => $qty,
                 'startDate' => $start,
                 'endDate' => $end,
                 'days' => $days,
@@ -131,17 +232,50 @@ final class CartService
             ];
         }
 
+        // si on a nettoyé des produits supprimés et que panier devient vide -> reset dates
+        if ($dirty) {
+            if (empty($cart['items'])) {
+                $cart['startDate'] = null;
+                $cart['endDate'] = null;
+            }
+            $this->saveCart($cart);
+        }
+
         return [
             'lines' => $cartLines,
+            'startDate' => $start,
+            'endDate' => $end,
+            'days' => $days,
             'rentalTotal' => $rentalTotal,
             'depositTotal' => $depositTotal,
-            'grandTotalNow' => bcadd($rentalTotal, $depositTotal, 2), // si tu veux afficher “à payer maintenant” plus tard, on ajustera
+            'grandTotalNow' => bcadd($rentalTotal, $depositTotal, 2),
         ];
     }
 
-    private function makeKey(int $productId, \DateTimeImmutable $start, \DateTimeImmutable $end): string
+    public function getCartDates(): ?array
     {
-        return hash('sha256', $productId.'|'.$start->format('Y-m-d').'|'.$end->format('Y-m-d'));
+        $cart = $this->getCart();
+
+        if (empty($cart['startDate']) || empty($cart['endDate'])) {
+            return null;
+        }
+
+        return [
+            new \DateTimeImmutable($cart['startDate']),
+            new \DateTimeImmutable($cart['endDate']),
+        ];
     }
+
+    private function getQuantityInCartForProduct(array $cart, int $productId): int
+    {
+        $key = (string) $productId;
+
+        if (!isset($cart['items'][$key])) {
+            return 0;
+        }
+
+        return (int) $cart['items'][$key]['quantity'];
+    }
+
 }
 

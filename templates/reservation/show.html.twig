@@ -1,0 +1,55 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Détail réservation {{ reservation.reference }}{% endblock %}
+
+{% block body %}
+    <h1>Détail réservation</h1>
+
+    <p><strong>Référence :</strong> {{ reservation.reference }}</p>
+    <p><strong>Statut :</strong> {{ reservation.status }}</p>
+    <p><strong>Dates :</strong> {{ reservation.startDate|date('Y-m-d') }} → {{ reservation.endDate|date('Y-m-d') }}</p>
+    <p><strong>Date retour prévue :</strong> {{ reservation.returnDueDate|date('Y-m-d') }}</p>
+
+    <hr>
+
+    <h2>Articles</h2>
+
+    {% if reservation.items is empty %}
+        <p>Aucun article.</p>
+    {% else %}
+        <table border="1" cellpadding="8">
+            <thead>
+            <tr>
+                <th>Produit</th>
+                <th>Qté</th>
+                <th>Prix/jour</th>
+                <th>Caution unitaire</th>
+                <th>Total location (ligne)</th>
+                <th>Total caution (ligne)</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for item in reservation.items %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.unitPrice }} €</td>
+                    <td>{{ item.unitDeposit }} €</td>
+                    <td>{{ item.lineRentalTotal }} €</td>
+                    <td>{{ item.lineDepositTotal }} €</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <hr>
+
+    <h2>Totaux</h2>
+    <p><strong>Total location :</strong> {{ reservation.rentalTotal }} €</p>
+    <p><strong>Total caution :</strong> {{ reservation.depositTotal }} €</p>
+
+    <p style="margin-top: 20px;">
+        <a href="{{ path('reservation_index') }}">← Retour à mes réservations</a>
+    </p>
+{% endblock %}
