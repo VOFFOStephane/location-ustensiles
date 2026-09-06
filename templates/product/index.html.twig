@@ -3,32 +3,138 @@
 {% block title %}Catalogue{% endblock %}
 
 {% block body %}
-    <h1>Catalogue (test)</h1>
 
-    {% for product in products %}
-        <div style="border:1px solid #ddd; padding:10px; margin-bottom:10px;">
-            <strong>{{ product.name }}</strong><br>
-            Prix/jour : {{ product.pricePerDay }} €<br>
-            Caution : {{ product.depositUnit }} €<br>
-            Stock total : {{ product.quantityTotal }}<br>
+    {{ include('partials/banner.html.twig') }}
 
-            <form method="post" action="{{ path('cart_add', {id: product.id}) }}" style="margin-top:10px;">
-                <label>Début</label>
-                <input type="date" name="startDate" required>
+    <div style="margin: 16px 0; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <form method="get" action="{{ path('product_index') }}" id="catalogFilterForm" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+            <input
+                type="text"
+                name="q"
+                value="{{ q }}"
+                placeholder="Rechercher un produit..."
+                id="qInput"
+                style="padding:10px; border:1px solid #ddd; border-radius:8px; min-width:240px;"
+            >
 
-                <label>Fin</label>
-                <input type="date" name="endDate" required>
+            <select
+                name="category"
+                id="catSelect"
+                style="padding:10px; border:1px solid #ddd; border-radius:8px;"
+            >
+                <option value="0" {{ categoryId == 0 ? 'selected' : '' }}>Toutes les catégories</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}" {{ categoryId == cat.id ? 'selected' : '' }}>
+                        {{ cat.name }}
+                    </option>
+                {% endfor %}
+            </select>
 
-                <label>Qté</label>
-                <input type="number" name="quantity" value="1" min="1" required>
+            {# on garde la page courante, mais on la remettra à 1 quand filtre change #}
+            <input type="hidden" name="page" id="pageInput" value="{{ page }}">
+        </form>
 
-                <button type="submit">Ajouter au panier</button>
-            </form>
+        <div style="opacity:0.8;">
+            {{ total }} résultat(s)
         </div>
-    {% else %}
-        <p>Aucun produit.</p>
-    {% endfor %}
+    </div>
 
-    <p><a href="{{ path('cart_index') }}">Voir le panier</a></p>
+    {% if products is empty %}
+        <p>Aucun produit.</p>
+    {% else %}
+        <div class="catalog-grid">
+            {% for product in products %}
+                {{ include('partials/_product_card.html.twig', { product: product }) }}
+            {% endfor %}
+        </div>
+        {% if pages > 1 %}
+            <div style="margin-top:18px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                {# Previous #}
+                {% if page > 1 %}
+                    <a href="{{ path('product_index', { q: q, category: categoryId|default(0), page: page - 1 }) }}">← Précédent</a>
+                {% endif %}
+
+                {# Pages (fenêtre autour de la page courante) #}
+                {% set start = page - 2 %}
+                {% set end = page + 2 %}
+                {% if start < 1 %}{% set start = 1 %}{% endif %}
+                {% if end > pages %}{% set end = pages %}{% endif %}
+
+                {% if start > 1 %}
+                    <a href="{{ path('product_index', { q: q, category: categoryId, page: 1 }) }}">1</a>
+                    {% if start > 2 %}…{% endif %}
+                {% endif %}
+
+                {% for p in start..end %}
+                    {% if p == page %}
+                        <strong style="padding:4px 8px; border:1px solid #ddd; border-radius:6px;">{{ p }}</strong>
+                    {% else %}
+                        <a href="{{ path('product_index', { q: q, category: categoryId, page: p }) }}">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if end < pages %}
+                    {% if end < pages - 1 %}…{% endif %}
+                    <a href="{{ path('product_index', { q: q, category: categoryId, page: pages }) }}">{{ pages }}</a>
+                {% endif %}
+
+                {# Next #}
+                {% if page < pages %}
+                    <a href="{{ path('product_index', { q: q, category: categoryId, page: page + 1 }) }}">Suivant →</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <script>
+        (function () {
+            const form = document.getElementById('catalogFilterForm');
+            const qInput = document.getElementById('qInput');
+            const catSelect = document.getElementById('catSelect');
+            const pageInput = document.getElementById('pageInput');
+
+            let timer = null;
+            let lastSubmittedQ = qInput.value;
+            let lastSubmittedCat = catSelect.value;
+
+            function submitNow() {
+                // reset page à 1 sur changement de filtre
+                pageInput.value = '1';
+
+                // évite de soumettre si rien n’a changé
+                const q = qInput.value;
+                const c = catSelect.value;
+                if (q === lastSubmittedQ && c === lastSubmittedCat) return;
+
+                lastSubmittedQ = q;
+                lastSubmittedCat = c;
+                form.submit();
+            }
+
+            function scheduleSubmit() {
+                clearTimeout(timer);
+                timer = setTimeout(submitNow, 600); // 600ms = plus confortable
+            }
+
+            // Auto-search après pause
+            qInput.addEventListener('input', scheduleSubmit);
+
+            // Enter = submit immédiat (sans attendre)
+            qInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    clearTimeout(timer);
+                    submitNow();
+                }
+            });
+
+            // Changement catégorie = immédiat
+            catSelect.addEventListener('change', () => {
+                clearTimeout(timer);
+                submitNow();
+            });
+        })();
+    </script>
+
 {% endblock %}
 

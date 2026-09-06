@@ -3,56 +3,184 @@
 {% block title %}Mes réservations{% endblock %}
 
 {% block body %}
-    <h1>Mes réservations</h1>
+    <div class="kr-main">
+        <section class="reservation-page">
+            <header class="reservation-page__head">
+                <h1 class="reservation-page__title">Mes réservations</h1>
+                <p class="reservation-page__subtitle">Suivez l'état de toutes vos locations</p>
+            </header>
 
-    {% if reservations is empty %}
-        <p>Aucune réservation.</p>
-    {% else %}
+            {# ================== STATS / FILTRES PAR STATUT ================== #}
+            <div class="reservation-stats">
+                <a
+                    class="reservation-stat {{ currentStatus == 'ALL' ? 'is-active' : '' }}"
+                    href="{{ path('reservation_index', {status: 'ALL', sort: currentSort}) }}"
+                >
+                    <span class="reservation-stat__number">{{ stats.ALL }}</span>
+                    <span class="reservation-stat__label">Toutes</span>
+                </a>
 
-        {% set labels = {
-            'PENDING': 'En attente',
-            'VALIDATED': 'Validée',
-            'IN_PROGRESS': 'En cours',
-            'COMPLETED': 'Terminée',
-            'CANCELLED': 'Annulée'
-        } %}
+                <a
+                    class="reservation-stat {{ currentStatus == 'PENDING' ? 'is-active' : '' }}"
+                    href="{{ path('reservation_index', {status: 'PENDING', sort: currentSort}) }}"
+                >
+                    <span class="reservation-stat__number reservation-stat__number--pending">{{ stats.PENDING }}</span>
+                    <span class="reservation-stat__label">En attente</span>
+                </a>
 
-        <table border="1" cellpadding="8">
-            <thead>
-            <tr>
-                <th>Référence</th>
-                <th>Créée le</th>
-                <th>Dates</th>
-                <th>Jours</th>
-                <th>Statut</th>
-                <th>Total location</th>
-                <th>Total caution</th>
-                <th>Actions</th>
-            </tr>
-            </thead>
+                <a
+                    class="reservation-stat {{ currentStatus == 'VALIDATED' ? 'is-active' : '' }}"
+                    href="{{ path('reservation_index', {status: 'VALIDATED', sort: currentSort}) }}"
+                >
+                    <span class="reservation-stat__number reservation-stat__number--validated">{{ stats.VALIDATED }}</span>
+                    <span class="reservation-stat__label">Confirmées</span>
+                </a>
 
-            <tbody>
-            {% for r in reservations %}
-                {% set days = r.startDate.diff(r.endDate).days + 1 %}
-                <tr>
-                    <td>{{ r.reference }}</td>
-                    <td>{{ r.createdAt ? r.createdAt|date('Y-m-d H:i') : '-' }}</td>
-                    <td>{{ r.startDate|date('Y-m-d') }} → {{ r.endDate|date('Y-m-d') }}</td>
-                    <td>{{ days }}</td>
-                    <td>{{ labels[r.status]|default(r.status) }}</td>
-                    <td>{{ r.rentalTotal }} €</td>
-                    <td>{{ r.depositTotal }} €</td>
+                <a
+                    class="reservation-stat {{ currentStatus == 'IN_PROGRESS' ? 'is-active' : '' }}"
+                    href="{{ path('reservation_index', {status: 'IN_PROGRESS', sort: currentSort}) }}"
+                >
+                    <span class="reservation-stat__number reservation-stat__number--progress">{{ stats.IN_PROGRESS }}</span>
+                    <span class="reservation-stat__label">En cours</span>
+                </a>
 
-                    <td>
-                        {# on le branchera ensuite #}
+                <a
+                    class="reservation-stat {{ currentStatus == 'COMPLETED' ? 'is-active' : '' }}"
+                    href="{{ path('reservation_index', {status: 'COMPLETED', sort: currentSort}) }}"
+                >
+                    <span class="reservation-stat__number reservation-stat__number--completed">{{ stats.COMPLETED }}</span>
+                    <span class="reservation-stat__label">Terminées</span>
+                </a>
+            </div>
 
-                        <a href="{{ path('reservation_show', {id: r.id}) }}">Voir</a>
+            {# ================== BARRE OUTILS ================== #}
+            <div class="reservation-toolbar">
+                <div class="reservation-toolbar__count">
+                <span class="reservation-toolbar__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M4 5h16l-6 7v5l-4 2v-7L4 5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+                    </svg>
+                </span>
+                    <span>{{ reservations|length }} réservation{{ reservations|length > 1 ? 's' : '' }}</span>
+                </div>
 
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+                <form method="get" action="{{ path('reservation_index') }}" class="reservation-toolbar__sort">
+                    <input type="hidden" name="status" value="{{ currentStatus }}">
 
-    {% endif %}
+                    <label class="reservation-toolbar__sort-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none">
+                            <path d="M8 6h10M8 12h7M8 18h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                            <path d="M4 5v14m0 0-2-2m2 2 2-2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </label>
+
+                    <select name="sort" class="reservation-toolbar__select" onchange="this.form.submit()">
+                        <option value="date_desc" {{ currentSort == 'date_desc' ? 'selected' : '' }}>Trier par date</option>
+                        <option value="date_asc" {{ currentSort == 'date_asc' ? 'selected' : '' }}>Date la plus ancienne</option>
+                        <option value="start_asc" {{ currentSort == 'start_asc' ? 'selected' : '' }}>Retrait le plus proche</option>
+                        <option value="start_desc" {{ currentSort == 'start_desc' ? 'selected' : '' }}>Retrait le plus lointain</option>
+                    </select>
+                </form>
+            </div>
+
+            {# ================== LISTE ================== #}
+            {% if reservations is empty %}
+                <div class="reservation-empty">
+                    <p>Vous n'avez encore aucune réservation pour ce filtre.</p>
+                    <a class="btn btn--primary btn--link" href="{{ path('product_index') }}">Voir le catalogue</a>
+                </div>
+            {% else %}
+                <div class="reservation-list">
+                    {% for r in reservations %}
+                        {% set itemsCount = r.items|length %}
+                        {% set rental = r.rentalTotal + 0 %}
+                        {% set solde = rental * 0.70 %}
+
+                        <article class="reservation-card">
+                            <div class="reservation-card__top">
+                                <div class="reservation-card__ref-group">
+                                    <div class="reservation-card__ref-row">
+                                        <h2 class="reservation-card__ref">{{ r.reference }}</h2>
+
+                                        {% if r.status == 'VALIDATED' %}
+                                            <span class="reservation-mini-badge">Solde à payer</span>
+                                        {% endif %}
+                                    </div>
+
+                                    <p class="reservation-card__date">
+                                        Créée le {{ r.createdAt ? r.createdAt|date('d F Y') : '-' }}
+                                    </p>
+                                </div>
+
+                                <div class="reservation-status reservation-status--{{ r.status|lower }}">
+                                    {% if r.status == 'VALIDATED' %}
+                                        <span class="reservation-status__icon">✓</span>
+                                    {% endif %}
+                                    {{ labels[r.status]|default(r.status) }}
+                                </div>
+                            </div>
+
+                            <div class="reservation-card__grid">
+                                <div class="reservation-card__info">
+                                    <div class="reservation-card__label">Produits</div>
+                                    <div class="reservation-card__value">
+                                        {{ itemsCount }} article{{ itemsCount > 1 ? 's' : '' }}
+                                    </div>
+                                </div>
+
+                                <div class="reservation-card__info">
+                                    <div class="reservation-card__label">Montant total</div>
+                                    <div class="reservation-card__value">
+                                        {{ r.rentalTotal }}€
+                                    </div>
+                                </div>
+
+                                <div class="reservation-card__info">
+                                    <div class="reservation-card__label">Retrait prévu</div>
+                                    <div class="reservation-card__value">
+                                        {{ r.startDate|date('d/m/Y') }}
+                                    </div>
+                                </div>
+
+                                <div class="reservation-card__info">
+                                    <div class="reservation-card__label">Retour prévu</div>
+                                    <div class="reservation-card__value">
+                                        {{ r.returnDueDate ? r.returnDueDate|date('d/m/Y') : r.endDate|date('d/m/Y') }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% if r.status == 'VALIDATED' %}
+                                <div class="reservation-alert">
+                                    <span class="reservation-alert__icon">!</span>
+                                    <span>Solde à payer avant retrait : {{ solde|number_format(2, '.', '') }}€</span>
+                                </div>
+                            {% elseif r.status == 'PENDING' %}
+                                <div class="reservation-alert reservation-alert--neutral">
+                                    <span class="reservation-alert__icon">…</span>
+                                    <span>Votre demande est en attente de validation.</span>
+                                </div>
+                            {% elseif r.status == 'IN_PROGRESS' %}
+                                <div class="reservation-alert reservation-alert--blue">
+                                    <span class="reservation-alert__icon">↺</span>
+                                    <span>La location est actuellement en cours.</span>
+                                </div>
+                            {% elseif r.status == 'COMPLETED' %}
+                                <div class="reservation-alert reservation-alert--green">
+                                    <span class="reservation-alert__icon">✓</span>
+                                    <span>Cette réservation est terminée.</span>
+                                </div>
+                            {% endif %}
+
+                            <div class="reservation-card__actions">
+                                <a class="reservation-link" href="{{ path('reservation_show', {id: r.id}) }}">
+                                    Voir les détails
+                                </a>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+    </div>
 {% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'base.html.twig' %}
+{% block title %}Modifier profil{% endblock %}
+
+{% block body %}
+    <div class="kr-main">
+        <div class="auth">
+            <div class="auth-card">
+                <h1 class="auth-title">Modifier mes informations</h1>
+                <p class="auth-subtitle">Mets à jour ton profil.</p>
+
+                {{ form_start(form, { attr: { class: 'form' } }) }}
+
+                <div class="form__grid">
+                    <div class="field">
+                        {{ form_label(form.firstname, null, {'label_attr': {'class': 'field__label'}}) }}
+                        {{ form_widget(form.firstname, {'attr': {'class': 'field__input'}}) }}
+                        {{ form_errors(form.firstname) }}
+                    </div>
+                    <div class="field">
+                        {{ form_label(form.lastname, null, {'label_attr': {'class': 'field__label'}}) }}
+                        {{ form_widget(form.lastname, {'attr': {'class': 'field__input'}}) }}
+                        {{ form_errors(form.lastname) }}
+                    </div>
+                </div>
+
+                <div class="field">
+                    {{ form_label(form.email, null, {'label_attr': {'class': 'field__label'}}) }}
+                    {{ form_widget(form.email, {'attr': {'class': 'field__input'}}) }}
+                    {{ form_errors(form.email) }}
+                </div>
+
+                <button class="btn btn--primary" type="submit">Enregistrer</button>
+
+                <p class="hint auth-foot">
+                    <a href="{{ path('profile_show') }}">Retour au profil</a>
+                </p>
+
+                {{ form_end(form) }}
+            </div>
+        </div>
+    </div>
+{% endblock %}

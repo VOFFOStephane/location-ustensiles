@@ -277,5 +277,35 @@ final class CartService
         return (int) $cart['items'][$key]['quantity'];
     }
 
+/*public function updateDates(\DateTimeImmutable $start, \DateTimeImmutable $end): void {
+        // 1) validation dates
+         $today = new \DateTimeImmutable('today');
+         if ($start < $today) {
+             throw new \InvalidArgumentException("La date de début ne peut pas être dans le passé.");
+         }
+         if ($end < $today) {
+             throw new \InvalidArgumentException("La date de fin ne peut pas être dans le passé.");
+         }
+         if ($end < $start) {
+             throw new \InvalidArgumentException("La date de fin doit être après la date de début.");
+         }
+         // 2) récupérer le panier
+        $cart = $this->getCart();
+         if (empty($cart['items'])) {
+             throw new \InvalidArgumentException('Panier vide.');
+         }
+         // 3) vérifier la dispo pour chaque produit du panier sur les nouvelles dates
+         foreach ($cart['items'] as $row) {
+             $productId = (int) $row['productId'];
+             $qty = (int) $row['quantity'];
+             $this->availability->assertAvailable($productId, $qty, $start, $end);
+         }
+         // 4) appliquer les nouvelles dates
+         $cart['startDate'] = $start->format('Y-m-d');
+         $cart['endDate'] = $end->format('Y-m-d'); $this->saveCart($cart);
+    }
+*/
+
+
 }
 

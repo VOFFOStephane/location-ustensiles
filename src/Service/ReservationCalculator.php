@@ -17,7 +17,7 @@ final class ReservationCalculator
 
         // +1 si tu veux compter "jours calendaires" (ex: 10->12 = 2 jours)
         // Ici, on fait 10->12 => 2 jours (standard location)
-        $days = (int) $diff->days;
+        $days = (int) $diff->days +1;
 
         return max(1, $days);
     }

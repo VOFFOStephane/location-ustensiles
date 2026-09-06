@@ -55,7 +55,7 @@ class UserAuthenticator extends AbstractLoginFormAuthenticator
         }
 
         // Sinon, redirection par défaut après login
-        return new RedirectResponse($this->urlGenerator->generate('cart_index'));
+        return new RedirectResponse($this->urlGenerator->generate('product_index'));
     }
 
 

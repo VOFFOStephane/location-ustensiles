@@ -1,0 +1,56 @@
+<a class="p-card__link" href="{{ path('product_show', {id: product.id}) }}">
+    <article class="p-card">
+        <div class="p-card__media">
+            {# ✅ Image: adapte la ligne src selon ton modèle #}
+            {# Option A: si tu as une propriété imageUrl #}
+            {# <img class="p-card__img" src="{{ product.imageUrl }}" alt="{{ product.name }}"> #}
+
+            {# Option B: si tu n'as rien -> placeholder #}
+            <img
+                class="p-card__img"
+                src="{{ asset('images/placeholder-product.jpg') }}"
+                alt="{{ product.name }}"
+                loading="lazy"
+            >
+
+            <span class="p-card__badge">{{ product.quantityTotal }} dispo.</span>
+        </div>
+
+        <div class="p-card__body">
+            <h3 class="p-card__title">{{ product.name }}</h3>
+
+            <div class="p-card__meta">
+                <span class="p-card__meta-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none">
+                        <path d="M12 2l8 4v12l-8 4-8-4V6l8-4Z" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M12 22V12" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M20 6l-8 4-8-4" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                </span>
+                <span class="p-card__meta-text">
+                    {{ product.category ? product.category.name : 'Sans catégorie' }}
+                </span>
+            </div>
+
+            <p class="p-card__desc">
+                {# ✅ Sans twig/string-extra: on fait un truncate simple #}
+                {% set d = product.description ?? '' %}
+                {{ d|length > 90 ? d|slice(0, 90) ~ '…' : d }}
+            </p>
+
+            <div class="p-card__divider"></div>
+
+            <div class="p-card__prices">
+                <div class="p-card__price-col">
+                    <div class="p-card__label">Prix/jour</div>
+                    <div class="p-card__price p-card__price--accent">{{ product.pricePerDay }}€</div>
+                </div>
+
+                <div class="p-card__price-col p-card__price-col--right">
+                    <div class="p-card__label">Caution</div>
+                    <div class="p-card__price">{{ product.depositUnit }}€</div>
+                </div>
+            </div>
+        </div>
+    </article>
+</a>

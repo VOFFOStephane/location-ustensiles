@@ -1,0 +1,57 @@
+{% extends 'base.html.twig' %}
+{% block title %}Historique réservations{% endblock %}
+
+{% block body %}
+    <div class="kr-main">
+        <h1 class="auth-title">Historique des réservations</h1>
+        <p class="auth-subtitle">Filtre par statut.</p>
+
+        {% set statuses = {
+            'ALL':'Toutes',
+            'PENDING':'En attente',
+            'VALIDATED':'Confirmées',
+            'IN_PROGRESS':'En cours',
+            'COMPLETED':'Terminées',
+            'CANCELLED':'Annulées'
+        } %}
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin: 14px 0;">
+            {% for k, label in statuses %}
+                <a class="kr-nav__link {{ status == k ? 'is-active' : '' }}"
+                   href="{{ path('profile_reservations', {status: k}) }}">
+                    {{ label }}
+                </a>
+            {% endfor %}
+        </div>
+
+        {% if reservations is empty %}
+            <div class="cart-empty">
+                <p>Aucune réservation.</p>
+                <a class="btn btn--primary btn--link" href="{{ path('product_index') }}">Retour au catalogue</a>
+            </div>
+        {% else %}
+            <div class="cart-items">
+                {% for r in reservations %}
+                    <article class="cart-item" style="grid-template-columns: 1fr 140px;">
+                        <div class="cart-item__content">
+                            <div class="cart-item__name">{{ r.reference }}</div>
+                            <div class="cart-item__meta">
+                                <div class="cart-item__meta-row">
+                                    {{ r.startDate|date('d/m/Y') }} → {{ r.endDate|date('d/m/Y') }}
+                                </div>
+                                <div class="cart-item__meta-row">
+                                    Statut : <strong>{{ r.status }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="cart-item__price-label">Total location</div>
+                            <div class="cart-item__price-value">{{ r.rentalTotal }}€</div>
+                            <a href="{{ path('reservation_show', {id: r.id}) }}">Voir</a>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </div>
+{% endblock %}

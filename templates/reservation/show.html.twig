@@ -3,53 +3,234 @@
 {% block title %}Détail réservation {{ reservation.reference }}{% endblock %}
 
 {% block body %}
-    <h1>Détail réservation</h1>
+    {% set labels = {
+        'PENDING': 'En attente',
+        'VALIDATED': 'Confirmée',
+        'IN_PROGRESS': 'En cours',
+        'COMPLETED': 'Terminée',
+        'CANCELLED': 'Annulée'
+    } %}
 
-    <p><strong>Référence :</strong> {{ reservation.reference }}</p>
-    <p><strong>Statut :</strong> {{ reservation.status }}</p>
-    <p><strong>Dates :</strong> {{ reservation.startDate|date('Y-m-d') }} → {{ reservation.endDate|date('Y-m-d') }}</p>
-    <p><strong>Date retour prévue :</strong> {{ reservation.returnDueDate|date('Y-m-d') }}</p>
+    {% set days = reservation.startDate.diff(reservation.endDate).days + 1 %}
+    {% set rental = reservation.rentalTotal + 0 %}
+    {% set deposit = reservation.depositTotal + 0 %}
+    {% set acompte = rental * 0.30 %}
+    {% set solde = rental - acompte %}
 
-    <hr>
+    <div class="kr-main">
+        <section class="reservation-show">
 
-    <h2>Articles</h2>
+            <div class="reservation-show__back">
+                <a href="{{ path('reservation_index') }}" class="reservation-back-link">
+                    <span aria-hidden="true">←</span>
+                    <span>Retour aux réservations</span>
+                </a>
+            </div>
 
-    {% if reservation.items is empty %}
-        <p>Aucun article.</p>
-    {% else %}
-        <table border="1" cellpadding="8">
-            <thead>
-            <tr>
-                <th>Produit</th>
-                <th>Qté</th>
-                <th>Prix/jour</th>
-                <th>Caution unitaire</th>
-                <th>Total location (ligne)</th>
-                <th>Total caution (ligne)</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for item in reservation.items %}
-                <tr>
-                    <td>{{ item.product.name }}</td>
-                    <td>{{ item.quantity }}</td>
-                    <td>{{ item.unitPrice }} €</td>
-                    <td>{{ item.unitDeposit }} €</td>
-                    <td>{{ item.lineRentalTotal }} €</td>
-                    <td>{{ item.lineDepositTotal }} €</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    {% endif %}
+            <article class="reservation-show__card">
+                <div class="reservation-show__head">
+                    <div>
+                        <h1 class="reservation-show__title">
+                            Réservation {{ reservation.reference }}
+                        </h1>
+                        <p class="reservation-show__subtitle">
+                            Créée le {{ reservation.createdAt ? reservation.createdAt|date('d/m/Y') : '-' }}
+                        </p>
+                    </div>
 
-    <hr>
+                    <div class="reservation-status reservation-status--{{ reservation.status|lower }}">
+                        {% if reservation.status == 'VALIDATED' %}
+                            <span class="reservation-status__icon">✓</span>
+                        {% endif %}
+                        {{ labels[reservation.status]|default(reservation.status) }}
+                    </div>
+                </div>
 
-    <h2>Totaux</h2>
-    <p><strong>Total location :</strong> {{ reservation.rentalTotal }} €</p>
-    <p><strong>Total caution :</strong> {{ reservation.depositTotal }} €</p>
+                {# ================== PRODUITS ================== #}
+                <section class="reservation-block">
+                    <h2 class="reservation-block__title">
+                        <span class="reservation-block__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path d="M12 2l8 4v12l-8 4-8-4V6l8-4Z" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M12 22V12" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M20 6l-8 4-8-4" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                        </span>
+                        Produits réservés
+                    </h2>
 
-    <p style="margin-top: 20px;">
-        <a href="{{ path('reservation_index') }}">← Retour à mes réservations</a>
-    </p>
+                    <div class="reservation-products">
+                        {% for item in reservation.items %}
+                            <div class="reservation-product">
+                                <div class="reservation-product__left">
+                                    <div class="reservation-product__name">{{ item.product.name }}</div>
+                                    <div class="reservation-product__meta">
+                                        {{ item.quantity }} × {{ item.unitPrice }}€/jour × {{ days }} jour{{ days > 1 ? 's' : '' }}
+                                    </div>
+                                    <div class="reservation-product__dates">
+                                        {{ reservation.startDate|date('d/m/Y') }} → {{ reservation.endDate|date('d/m/Y') }}
+                                    </div>
+                                </div>
+
+                                <div class="reservation-product__right">
+                                    <div>{{ item.lineRentalTotal }}€</div>
+                                    <div class="muted">Caution: {{ item.lineDepositTotal }}€</div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <p>Aucun article.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                {# ================== RECAP FINANCIER ================== #}
+                <section class="reservation-summary-box">
+                    <h2 class="reservation-block__title">
+                        <span class="reservation-block__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path d="M3 7h18v10H3V7Z" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M3 10h18" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                        </span>
+                        Récapitulatif financier
+                    </h2>
+
+                    <div class="reservation-summary-row">
+                        <span>Sous-total location</span>
+                        <strong>{{ reservation.rentalTotal }}€</strong>
+                    </div>
+
+                    <div class="reservation-summary-row">
+                        <span>Caution totale</span>
+                        <strong>{{ reservation.depositTotal }}€</strong>
+                    </div>
+
+                    <div class="reservation-summary-divider"></div>
+
+                    <div class="reservation-summary-row">
+                        <span>Acompte (30%) {{ reservation.status in ['VALIDATED','IN_PROGRESS','COMPLETED'] ? '✓' : '' }}</span>
+                        <strong class="is-green">{{ acompte|number_format(2, '.', '') }}€</strong>
+                    </div>
+
+                    <div class="reservation-summary-row">
+                        <span>Solde</span>
+                        <strong class="is-orange">{{ solde|number_format(2, '.', '') }}€</strong>
+                    </div>
+
+
+                </section>
+
+                {# ===== Dernière demande APPROVED : delta à payer/rembourser sur place ===== #}
+                {% set latestApproved = null %}
+                {% for req in reservation.dateChangeRequests %}
+                    {% if req.status == 'APPROVED' %}
+                        {% set latestApproved = req %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if latestApproved %}
+                    {% set delta = latestApproved.deltaRentalTotal + 0 %}
+
+                    {% if delta > 0 %}
+                        <div class="req-alert req-alert--danger" style="margin-top:14px;">
+                            <div class="req-alert__title">⚠️ Supplément à payer sur place</div>
+                            <div class="req-alert__text">
+                                Nouveau total location : <strong>{{ latestApproved.newRentalTotal }}€</strong> —
+                                Ancien total : <strong>{{ latestApproved.oldRentalTotal }}€</strong><br>
+                                Différence : <strong>{{ delta|number_format(2,'.','') }}€</strong>
+                            </div>
+                        </div>
+                    {% elseif delta < 0 %}
+                        <div class="req-alert req-alert--info" style="margin-top:14px;">
+                            <div class="req-alert__title">✅ Montant à déduire / rembourser sur place</div>
+                            <div class="req-alert__text">
+                                Nouveau total location : <strong>{{ latestApproved.newRentalTotal }}€</strong> —
+                                Ancien total : <strong>{{ latestApproved.oldRentalTotal }}€</strong><br>
+                                Différence : <strong>{{ (delta * -1)|number_format(2,'.','') }}€</strong>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="req-alert req-alert--info" style="margin-top:14px;">
+                            <div class="req-alert__title">Aucun changement de prix</div>
+                            <div class="req-alert__text">
+                                La modification des dates n’a pas changé le total location.
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endif %}
+
+                {# ================== DATES IMPORTANTES ================== #}
+                <section class="reservation-dates-box">
+                    <h2 class="reservation-block__title">
+                        <span class="reservation-block__icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none">
+                                <path d="M7 3v3M17 3v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M4 8h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                <path d="M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.5"/>
+                            </svg>
+                        </span>
+                        Dates importantes
+                    </h2>
+
+                    <div class="reservation-dates-grid">
+                        <div>
+                            <div class="reservation-info-label">Retrait prévu</div>
+                            <div class="reservation-info-value">{{ reservation.startDate|date('d/m/Y') }}</div>
+                        </div>
+
+                        <div>
+                            <div class="reservation-info-label">Retour prévu</div>
+                            <div class="reservation-info-value">
+                                {{ reservation.returnDueDate ? reservation.returnDueDate|date('d/m/Y') : reservation.endDate|date('d/m/Y') }}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {# ================== ACTIONS ================== #}
+                <section class="reservation-actions">
+
+                    {% set hasPendingChange = false %}
+                    {% for req in reservation.dateChangeRequests %}
+                        {% if req.status == 'PENDING' %}
+                            {% set hasPendingChange = true %}
+                        {% endif %}
+                    {% endfor %}
+
+
+                    {# facture acompte : visible au moins sur PENDING/VALIDATED #}
+                    {% if reservation.status in ['PENDING', 'VALIDATED'] %}
+                        <button type="button" class="reservation-action-btn reservation-action-btn--soft">
+                            <span aria-hidden="true">⇩</span>
+                            <span>Télécharger la facture d'acompte</span>
+                        </button>
+                    {% endif %}
+
+                    {# seulement si confirmé #}
+                    {% if reservation.status == 'VALIDATED' and not hasPendingChange %}
+                        <a class="reservation-action-btn reservation-action-btn--soft"
+                           href="{{ path('reservation_change_request_new', {id: reservation.id}) }}">
+                            <span aria-hidden="true">🗓</span>
+                            <span>Demander une modification de date</span>
+                        </a>
+
+                        <button type="button" class="reservation-action-btn reservation-action-btn--soft">
+                            <span aria-hidden="true">📄</span>
+                            <span>Télécharger le contrat</span>
+                        </button>
+                    {% elseif reservation.status == 'VALIDATED' and hasPendingChange %}
+                        <div class="hint"> Une demande de modification est déjà en attente.</div>
+                    {% endif %}
+
+                    {# annulation : pour l’instant seulement en attente #}
+                    {% if reservation.status == 'PENDING' %}
+                        <button type="button" class="reservation-action-btn reservation-action-btn--danger">
+                            <span aria-hidden="true">⊗</span>
+                            <span>Annuler la réservation</span>
+                        </button>
+                    {% endif %}
+                </section>
+            </article>
+        </section>
+    </div>
 {% endblock %}

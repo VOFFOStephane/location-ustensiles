@@ -1,82 +1,474 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Panier{% endblock %}
+{% block title %}Mon panier{% endblock %}
 
 {% block body %}
-    <h1>Mon panier</h1>
+    <div class="kr-main">
+        <h1 class="cart-title">Mon panier</h1>
 
-    {% if cart.lines is empty %}
-        <p>Votre panier est vide.</p>
-    {% else %}
+        {# ✅ zone messages AJAX (en plus des flashes) #}
+        <div id="cartAjaxNotice" class="cart-ajax-notice" aria-live="polite"></div>
 
-        <table border="1" cellpadding="8">
-            <thead>
-            <tr>
-                <th>Produit</th>
-                <th>Dates</th>
-                <th>Jours</th>
-                <th>Quantité</th>
-                <th>Total location</th>
-                <th>Total caution</th>
-                <th>Actions</th>
-            </tr>
-            </thead>
-            <tbody>
-            {% for line in cart.lines %}
-                <tr>
-                    <td>{{ line.product.name }}</td>
-                    <td>{{ line.startDate|date('Y-m-d') }} → {{ line.endDate|date('Y-m-d') }}</td>
-                    <td>{{ line.days }}</td>
+        {% if cart.lines is empty %}
+            <div class="cart-empty">
+                <p>Votre panier est vide.</p>
+                <a class="btn btn--primary btn--link" href="{{ path('product_index') }}">Retour au catalogue</a>
+            </div>
+        {% else %}
 
-                    <td>
-                        <form method="post" action="{{ path('cart_update', {key: line.key}) }}">
-                            <input type="hidden" name="_token" value="{{ csrf_token('cart_update_' ~ line.key) }}">
+            {# paiement : caution payée plus tard #}
+            {% set rental = cart.rentalTotal + 0 %}
+            {% set deposit = cart.depositTotal + 0 %}
+            {% set acompte = (rental * 0.30) %}
+            {% set solde = (rental - acompte) %}
+            {% set payNow = acompte %}
+            {% set payLater = (solde + deposit) %}
+            {% set today = "now"|date("Y-m-d") %}
+            <div class="cart-layout">
 
-                            <label>
-                                <input type="number"
-                                       name="quantity"
-                                       value="{{ line.quantity }}"
-                                       min="1"
-                                       required>
-                            </label>
+                {# ================== COLONNE GAUCHE : ITEMS ================== #}
+                <section class="cart-items">
 
-                            <button type="submit">OK</button>
+                    {% for line in cart.lines %}
+                        <article class="cart-item" data-line="{{ line.key }}">
+                            <div class="cart-item__media">
+                                <img
+                                    class="cart-item__img"
+                                    src="{{ asset('images/placeholder-product.jpg') }}"
+                                    alt="{{ line.product.name }}"
+                                    loading="lazy"
+                                >
+                            </div>
+
+                            <div class="cart-item__content">
+                                <div class="cart-item__name">{{ line.product.name }}</div>
+
+                                <div class="cart-item__meta">
+
+                                    {# ✅ quantité modifiable #}
+                                    <div class="cart-item__meta-row cart-qty">
+                                        <span class="cart-item__meta-label">Quantité :</span>
+
+                                        <input
+                                            class="cart-qty__input"
+                                            type="number"
+                                            min="1"
+                                            step="1"
+                                            value="{{ line.quantity }}"
+                                            data-key="{{ line.key }}"
+                                            data-token="{{ csrf_token('cart_update_' ~ line.key) }}"
+                                        >
+
+                                        <span class="cart-qty__avail" id="avail-{{ line.key }}">
+                                        Disponible : —
+                                    </span>
+                                    </div>
+
+                                    {# ✅ dates globales (affichées par ligne) #}
+                                    <div class="cart-item__meta-row">
+                                    <span class="cart-item__meta-icon" aria-hidden="true">
+                                        <svg viewBox="0 0 24 24" fill="none">
+                                            <path d="M7 3v3M17 3v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                            <path d="M4 8h16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                            <path d="M6 5h12a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.5"/>
+                                        </svg>
+                                    </span>
+
+                                        <span id="dates-{{ line.key }}">
+                                        {{ line.startDate|date('d/m/Y') }} → {{ line.endDate|date('d/m/Y') }}
+                                        <span class="cart-item__days" id="days-{{ line.key }}">({{ line.days }} jours)</span>
+                                    </span>
+                                    </div>
+                                </div>
+
+                                <div class="cart-item__prices">
+                                    <div>
+                                        <div class="cart-item__price-label">Prix location</div>
+                                        <div class="cart-item__price-value" id="lineRental-{{ line.key }}">
+                                            {{ line.lineRentalTotal }}€
+                                        </div>
+                                    </div>
+                                    <div class="cart-item__price-right">
+                                        <div class="cart-item__price-label">Caution</div>
+                                        <div class="cart-item__price-value" id="lineDeposit-{{ line.key }}">
+                                            {{ line.lineDepositTotal }}€
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="cart-item__actions">
+                                <form method="post" action="{{ path('cart_remove', {key: line.key}) }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('cart_remove_' ~ line.key) }}">
+                                    <button class="icon-btn icon-btn--danger" type="submit" title="Supprimer">
+                                        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                            <path d="M9 3h6m-8 4h10m-1 0-1 14H8L7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                                            <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </section>
+
+                {# ================== COLONNE DROITE : RECAP ================== #}
+                <aside class="cart-summary">
+                    <div class="summary-card">
+                        <h2 class="summary-title">Récapitulatif</h2>
+
+                        {# ✅ Dates globales modifiables (Option A) #}
+                       <!-- <div class="cart-dates card-lite">
+                            <div class="card-lite__title">Dates de location</div>
+
+                            <div class="cart-dates__grid">
+                                <div>
+                                    <div class="field__label">Début</div>
+                                    <input class="field__input"
+                                           type="date"
+                                           id="cartStart"
+                                           min="{{ today }}"
+                                           value="{{ cart.startDate ? cart.startDate|date('Y-m-d') : '' }}">
+                                </div>
+                                <div>
+                                    <div class="field__label">Fin</div>
+                                    <input class="field__input"
+                                           type="date"
+                                           id="cartStart"
+                                           min="{{ today }}"
+                                           value="{{ cart.startDate ? cart.startDate|date('Y-m-d') : '' }}">
+                                </div>
+                            </div>
+
+                            <input type="hidden" id="cartDatesToken" value="{{ csrf_token('cart_dates') }}">
+                            <div class="hint">Ces dates s’appliquent à tous les produits du panier.</div>
+                        </div> -->
+
+                        <div class="summary-rows">
+                            <div class="summary-row">
+                                <span>Sous-total location</span>
+                                <strong><span id="sumRental">{{ cart.rentalTotal }}</span>€</strong>
+                            </div>
+                            <div class="summary-row">
+                                <span>Caution totale</span>
+                                <strong><span id="sumDeposit">{{ cart.depositTotal }}</span>€</strong>
+                            </div>
+                        </div>
+
+                        <div class="summary-divider"></div>
+
+                        <div class="paybox">
+                            <div class="paybox-head">
+                            <span class="paybox-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none">
+                                    <path d="M3 7h18v10H3V7Z" stroke="currentColor" stroke-width="1.5"/>
+                                    <path d="M3 10h18" stroke="currentColor" stroke-width="1.5"/>
+                                </svg>
+                            </span>
+                                <strong>Paiement en 2 temps</strong>
+                            </div>
+
+                            <div class="paybox-rows">
+                                <div class="paybox-row">
+                                    <span>Acompte (30%)</span>
+                                    <strong><span id="sumAcompte">{{ acompte|number_format(2, '.', '') }}</span>€</strong>
+                                </div>
+                                <div class="paybox-row">
+                                    <span>Solde location</span>
+                                    <strong><span id="sumSolde">{{ solde|number_format(2, '.', '') }}</span>€</strong>
+                                </div>
+                                <div class="paybox-row">
+                                    <span>À payer plus tard (solde + caution)</span>
+                                    <strong><span id="sumPayLater">{{ payLater|number_format(2, '.', '') }}</span>€</strong>
+                                </div>
+                            </div>
+
+                            <div class="paybox-divider"></div>
+
+                            <div class="paynow">
+                                <div class="paynow-label">À PAYER MAINTENANT</div>
+                                <div class="paynow-value"><span id="sumPayNow">{{ payNow|number_format(2, '.', '') }}</span>€</div>
+                                <div class="paynow-sub">
+                                    Vous payez maintenant uniquement l’acompte (30%) :
+                                    <strong>{{ acompte|number_format(2, '.', '') }}€</strong>.
+                                    Le reste <strong>(solde + caution)</strong> sera payé au retrait :
+                                    <strong>{{ payLater|number_format(2, '.', '') }}€</strong>.
+                                </div>
+                            </div>
+                        </div>
+
+                        <form class="summary-action" method="post" action="{{ path('reservation_checkout') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token('checkout') }}">
+                            <button class="btn btn--primary" type="submit">
+                                Payer <span id="btnPayNow">{{ payNow|number_format(2, '.', '') }}</span>€ via Stripe
+                            </button>
+                            <div class="summary-note">
+                                (Stripe sera branché ensuite : pour l’instant ça crée la réservation)
+                            </div>
                         </form>
-                    </td>
 
-                    <td>{{ line.lineRentalTotal }} €</td>
-                    <td>{{ line.lineDepositTotal }} €</td>
-
-                    <td>
-                        <form method="post" action="{{ path('cart_remove', {key: line.key}) }}">
-                            <input type="hidden" name="_token" value="{{ csrf_token('cart_remove_' ~ line.key) }}">
-
-                            <button type="submit">Supprimer</button>
+                        <form method="post" action="{{ path('cart_clear') }}" class="summary-clear">
+                            <input type="hidden" name="_token" value="{{ csrf_token('cart_clear') }}">
+                            <button class="btn btn--ghost" type="submit">Vider le panier</button>
                         </form>
-                    </td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
+                    </div>
+                </aside>
 
-        <p><strong>Total location :</strong> {{ cart.rentalTotal }} €</p>
-        <p><strong>Total caution :</strong> {{ cart.depositTotal }} €</p>
-        <p><strong>Total (location + caution) :</strong> {{ cart.grandTotalNow }} €</p>
+            </div>
 
-        {# CHECKOUT #}
-        <form method="post" action="{{ path('reservation_checkout') }}">
-            <input type="hidden" name="_token" value="{{ csrf_token('checkout') }}">
-            <button type="submit" class="btn btn-primary">
-                Valider la réservation
-            </button>
-        </form>
+            <script>
+                (function () {
+                    const notice = document.getElementById('cartAjaxNotice');
 
-        {# CLEAR #}
-        <form method="post" action="{{ path('cart_clear') }}">
-            <input type="hidden" name="_token" value="{{ csrf_token('cart_clear') }}">
-            <button type="submit">Vider le panier</button>
-        </form>
+                    function showNotice(msg, type = 'info') {
+                        notice.className = 'cart-ajax-notice is-' + type;
+                        notice.textContent = msg;
+                        notice.style.display = 'block';
+                        clearTimeout(showNotice._t);
+                        showNotice._t = setTimeout(() => {
+                            notice.style.opacity = '0';
+                            setTimeout(() => {
+                                notice.style.display = 'none';
+                                notice.style.opacity = '1';
+                            }, 250);
+                        }, 3500);
+                    }
 
-    {% endif %}
+                    function fmt2(n) {
+                        const x = Number(n);
+                        if (!Number.isFinite(x)) return '0.00';
+                        return x.toFixed(2);
+                    }
+
+                    function recomputePaymentFromTotals(rentalStr, depositStr) {
+                        const rental = Number(rentalStr);
+                        const deposit = Number(depositStr);
+                        const acompte = rental * 0.30;
+                        const solde = rental - acompte;
+                        const payNow = acompte;
+                        const payLater = solde + deposit;
+
+                        document.getElementById('sumAcompte').textContent = fmt2(acompte);
+                        document.getElementById('sumSolde').textContent = fmt2(solde);
+                        document.getElementById('sumPayNow').textContent = fmt2(payNow);
+                        document.getElementById('sumPayLater').textContent = fmt2(payLater);
+                        document.getElementById('btnPayNow').textContent = fmt2(payNow);
+                    }
+
+                    async function fetchAvailabilityForLine(key) {
+                        const url = `{{ path('cart_line_availability', {key: 'KEY'}) }}`.replace('KEY', encodeURIComponent(key));
+                        const r = await fetch(url, { headers: { 'Accept': 'application/json' }});
+                        const data = await r.json();
+
+                        if (!data.ok) throw new Error(data.error || 'Erreur disponibilité');
+
+                        const availEl = document.getElementById('avail-' + key);
+                        const input = document.querySelector(`.cart-qty__input[data-key="${CSS.escape(key)}"]`);
+
+                        if (availEl) availEl.textContent = `Disponible : ${data.available}`;
+
+                        if (input) {
+                            input.max = String(Math.max(1, data.available));
+                            // clamp si besoin
+                            const v = parseInt(input.value || '1', 10);
+                            if (data.available > 0 && v > data.available) {
+                                input.value = String(data.available);
+                            }
+                        }
+                    }
+
+                    async function updateQuantity(key, qty, token) {
+                        const url = `{{ path('cart_line_update_quantity', {key: 'KEY'}) }}`.replace('KEY', encodeURIComponent(key));
+
+                        const body = new URLSearchParams();
+                        body.set('quantity', String(qty));
+                        body.set('_token', token);
+
+                        const r = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body
+                        });
+
+                        const data = await r.json();
+                        if (!data.ok) throw new Error(data.error || 'Erreur mise à jour');
+
+                        // panier vidé ?
+                        if (data.cartEmpty) {
+                            location.reload();
+                            return;
+                        }
+
+                        // dispo UI
+                        if (typeof data.available !== 'undefined') {
+                            const availEl = document.getElementById('avail-' + key);
+                            if (availEl) availEl.textContent = `Disponible : ${data.available}`;
+                        }
+
+                        // ligne
+                        if (data.line) {
+                            const lr = document.getElementById('lineRental-' + key);
+                            const ld = document.getElementById('lineDeposit-' + key);
+                            if (lr) lr.textContent = `${data.line.lineRentalTotal}€`;
+                            if (ld) ld.textContent = `${data.line.lineDepositTotal}€`;
+
+                            const daysEl = document.getElementById('days-' + key);
+                            if (daysEl) daysEl.textContent = `(${data.line.days} jours)`;
+                        }
+
+                        // totaux
+                        if (data.totals) {
+                            document.getElementById('sumRental').textContent = data.totals.rentalTotal;
+                            document.getElementById('sumDeposit').textContent = data.totals.depositTotal;
+                            recomputePaymentFromTotals(data.totals.rentalTotal, data.totals.depositTotal);
+                        }
+
+                        showNotice('Quantité mise à jour ✅', 'success');
+                    }
+
+                    async function updateDates(startDate, endDate, token) {
+
+
+                        const body = new URLSearchParams();
+                        body.set('startDate', startDate);
+                        body.set('endDate', endDate);
+                        body.set('_token', token);
+
+                        const r = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body
+                        });
+
+                        const data = await r.json();
+                        if (!data.ok) throw new Error(data.error || 'Erreur dates');
+
+                        // update lignes (prix + jours + dates)
+                        if (Array.isArray(data.lines)) {
+                            data.lines.forEach(line => {
+                                const key = line.key;
+                                const lr = document.getElementById('lineRental-' + key);
+                                const ld = document.getElementById('lineDeposit-' + key);
+                                if (lr) lr.textContent = `${line.lineRentalTotal}€`;
+                                if (ld) ld.textContent = `${line.lineDepositTotal}€`;
+
+                                const daysEl = document.getElementById('days-' + key);
+                                if (daysEl) daysEl.textContent = `(${line.days} jours)`;
+
+                                const datesEl = document.getElementById('dates-' + key);
+                                if (datesEl) {
+                                    // on laisse Twig/format FR côté PHP; ici simple affichage ISO -> FR
+                                    const s = line.startDate.split('-').reverse().join('/');
+                                    const e = line.endDate.split('-').reverse().join('/');
+                                    datesEl.innerHTML = `${s} → ${e} <span class="cart-item__days" id="days-${key}">(${line.days} jours)</span>`;
+                                }
+                            });
+                        }
+
+                        // totaux + paiement
+                        if (data.totals) {
+                            document.getElementById('sumRental').textContent = data.totals.rentalTotal;
+                            document.getElementById('sumDeposit').textContent = data.totals.depositTotal;
+                            recomputePaymentFromTotals(data.totals.rentalTotal, data.totals.depositTotal);
+                        }
+
+                        // refresh dispo par ligne
+                        const inputs = document.querySelectorAll('.cart-qty__input');
+                        for (const input of inputs) {
+                            await fetchAvailabilityForLine(input.dataset.key);
+                        }
+
+                        showNotice('Dates mises à jour ✅', 'success');
+                    }
+
+                    // 1) initial : charger la dispo pour chaque ligne
+                    document.querySelectorAll('.cart-qty__input').forEach(input => {
+                        fetchAvailabilityForLine(input.dataset.key).catch(() => {});
+                    });
+
+                    // 2) changement quantité (debounce)
+                    const timers = new Map();
+                    document.querySelectorAll('.cart-qty__input').forEach(input => {
+                        input.addEventListener('input', () => {
+                            const key = input.dataset.key;
+                            const token = input.dataset.token;
+                            let qty = parseInt(input.value || '1', 10);
+                            if (!Number.isFinite(qty) || qty < 1) qty = 1;
+
+                            // clamp sur max UI si présent
+                            const max = parseInt(input.max || '0', 10);
+                            if (max > 0 && qty > max) qty = max;
+                            input.value = String(qty);
+
+                            clearTimeout(timers.get(key));
+                            timers.set(key, setTimeout(() => {
+                                updateQuantity(key, qty, token).catch(err => {
+                                    showNotice(err.message || 'Erreur', 'error');
+                                    // on recharge dispo/état réel
+                                    fetchAvailabilityForLine(key).catch(() => {});
+                                });
+                            }, 450));
+                        });
+                    });
+
+                    // 3) changement dates globales (debounce)
+                    const startEl = document.getElementById('cartStart');
+                    const endEl = document.getElementById('cartEnd');
+                    const tokenDates = document.getElementById('cartDatesToken').value;
+
+                    const todayISO = '{{ "now"|date("Y-m-d") }}';
+
+                    let dateTimer = null;
+
+                    function scheduleDatesUpdate() {
+                        clearTimeout(dateTimer);
+                        dateTimer = setTimeout(() => {
+                            const s = startEl.value;
+                            const e = endEl.value;
+                            if (!s || !e) return;
+
+                            // règles UI
+                            if (s < todayISO) {
+                                showNotice("La date de début ne peut pas être dans le passé.", "error");
+                                startEl.value = todayISO;
+                                return;
+                            }
+                            if (e < todayISO) {
+                                showNotice("La date de fin ne peut pas être dans le passé.", "error");
+                                endEl.value = todayISO;
+                                return;
+                            }
+                            if (e < s) {
+                                showNotice("La date de fin doit être après la date de début.", "error");
+                                return;
+                            }
+
+                            /* updateDates(s, e, tokenDates)
+                                .catch(err => showNotice(err.message || 'Erreur', 'error')); */
+                        }, 600);
+                    }
+
+                    // init min côté JS aussi (sécurité)
+                    if (startEl && endEl) {
+                        startEl.min = todayISO;
+                        endEl.min = todayISO;
+
+                        startEl.addEventListener('change', scheduleDatesUpdate);
+                        endEl.addEventListener('change', scheduleDatesUpdate);
+                    }
+
+                })();
+            </script>
+
+        {% endif %}
+    </div>
 {% endblock %}
 

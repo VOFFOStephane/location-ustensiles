@@ -11,24 +11,73 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-
 
 #[IsGranted('ROLE_USER')]
 final class ReservationController extends AbstractController
 {
     #[Route('/reservations', name: 'reservation_index', methods: ['GET'])]
-    public function index(ReservationRepository $repo): Response
+    public function index(Request $request, ReservationRepository $repo): Response
     {
         $user = $this->getUserOrDeny();
 
-        $reservations = $repo->findBy(
+        $status = strtoupper((string) $request->query->get('status', 'ALL'));
+        $sort   = (string) $request->query->get('sort', 'date_desc');
+
+        $allReservations = $repo->findBy(
             ['user' => $user],
             ['createdAt' => 'DESC']
         );
 
+        $stats = [
+            'ALL' => count($allReservations),
+            'PENDING' => 0,
+            'VALIDATED' => 0,
+            'IN_PROGRESS' => 0,
+            'COMPLETED' => 0,
+        ];
+
+        foreach ($allReservations as $reservation) {
+            $rStatus = $reservation->getStatus();
+            if (isset($stats[$rStatus])) {
+                $stats[$rStatus]++;
+            }
+        }
+
+        $allowedStatuses = ['ALL', 'PENDING', 'VALIDATED', 'IN_PROGRESS', 'COMPLETED'];
+        if (!in_array($status, $allowedStatuses, true)) {
+            $status = 'ALL';
+        }
+
+        $reservations = $allReservations;
+
+        if ($status !== 'ALL') {
+            $reservations = array_filter(
+                $reservations,
+                static fn ($r) => $r->getStatus() === $status
+            );
+        }
+
+        usort($reservations, function ($a, $b) use ($sort) {
+            return match ($sort) {
+                'date_asc'   => $a->getCreatedAt() <=> $b->getCreatedAt(),
+                'start_asc'  => $a->getStartDate() <=> $b->getStartDate(),
+                'start_desc' => $b->getStartDate() <=> $a->getStartDate(),
+                default      => $b->getCreatedAt() <=> $a->getCreatedAt(), // date_desc
+            };
+        });
+
         return $this->render('reservation/index.html.twig', [
             'reservations' => $reservations,
+            'stats' => $stats,
+            'currentStatus' => $status,
+            'currentSort' => $sort,
+            'labels' => [
+                'PENDING' => 'En attente',
+                'VALIDATED' => 'Confirmée',
+                'IN_PROGRESS' => 'En cours',
+                'COMPLETED' => 'Terminée',
+                'CANCELLED' => 'Annulée',
+            ],
         ]);
     }
 
@@ -57,7 +106,7 @@ final class ReservationController extends AbstractController
         } catch (\InvalidArgumentException $e) {
             $this->addFlash('error', $e->getMessage());
             return $this->redirectToRoute('cart_index');
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             $this->addFlash('error', 'Une erreur est survenue lors de la création de la réservation.');
             return $this->redirectToRoute('cart_index');
         }
@@ -68,7 +117,6 @@ final class ReservationController extends AbstractController
     {
         $user = $this->getUserOrDeny();
 
-        // On charge la réservation + items + produits en une requête
         $reservation = $repo->findOneForUserWithItems($id, $user);
 
         if (!$reservation) {
@@ -79,7 +127,6 @@ final class ReservationController extends AbstractController
             'reservation' => $reservation,
         ]);
     }
-
 
     private function getUserOrDeny(): User
     {
@@ -92,5 +139,4 @@ final class ReservationController extends AbstractController
         return $user;
     }
 }
-
 

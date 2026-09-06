@@ -1,34 +1,71 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Log in!{% endblock %}
+{% block title %}Connexion{% endblock %}
 
 {% block body %}
-<form method="post">
-    {% if error %}
-        <div class="alert alert-danger">{{ error.messageKey|trans(error.messageData, 'security') }}</div>
-    {% endif %}
+    <div class="kr-main">
+        <div class="auth">
+            <div class="auth-card">
+                <h1 class="auth-title">Connexion</h1>
+                <p class="auth-subtitle">Connecte-toi pour accéder à ton panier et tes réservations.</p>
 
-    {% if app.user %}
-        <div class="mb-3">
-            You are logged in as {{ app.user.userIdentifier }}, <a href="{{ logout_path() }}">Logout</a>
+                {% if error %}
+                    <div class="flash flash-error" data-flash>
+                        {{ error.messageKey|trans(error.messageData, 'security') }}
+                    </div>
+                {% endif %}
+
+                {% if app.user %}
+                    <div class="flash flash-info" data-flash>
+                        Tu es déjà connecté en tant que <strong>{{ app.user.userIdentifier }}</strong>.
+                        <a href="{{ path('app_logout') }}">Déconnexion</a>
+                    </div>
+                {% endif %}
+
+                <form method="post" class="form">
+                    <div class="field">
+                        <label class="field__label" for="inputEmail">Email</label>
+                        <input
+                            class="field__input"
+                            type="email"
+                            value="{{ last_username }}"
+                            name="email"
+                            id="inputEmail"
+                            autocomplete="email"
+                            required
+                            autofocus
+                            placeholder="email@exemple.com"
+                        >
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="inputPassword">Mot de passe</label>
+                        <input
+                            class="field__input"
+                            type="password"
+                            name="password"
+                            id="inputPassword"
+                            autocomplete="current-password"
+                            required
+                            placeholder="••••••••"
+                        >
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                    <div class="field auth-check">
+                        <input class="auth-check__box" type="checkbox" name="_remember_me" id="rememberMe">
+                        <label for="rememberMe" class="auth-check__text">Se souvenir de moi</label>
+                    </div>
+
+                    <button class="btn btn--primary" type="submit">Se connecter</button>
+
+                    <p class="hint auth-foot">
+                        Pas de compte ?
+                        <a href="{{ path('app_register') }}">Créer un compte</a>
+                    </p>
+                </form>
+            </div>
         </div>
-    {% endif %}
-
-    <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
-    <label for="inputEmail">Email</label>
-    <input type="email" value="{{ last_username }}" name="email" id="inputEmail" class="form-control" autocomplete="email" required autofocus>
-    <label for="inputPassword">Password</label>
-    <input type="password" name="password" id="inputPassword" class="form-control" autocomplete="current-password" required>
-    <input type="hidden" name="_csrf_token" data-controller="csrf-protection" value="{{ csrf_token('authenticate') }}">
-
-    <div class="checkbox mb-3">
-        <label>
-            <input type="checkbox" name="_remember_me"> Remember me
-        </label>
     </div>
-
-    <button class="btn btn-lg btn-primary" type="submit">
-        Sign in
-    </button>
-</form>
 {% endblock %}

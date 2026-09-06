@@ -41,8 +41,20 @@ security:
 
     # Note: Only the *first* matching rule is applied
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        # Autoriser l'endpoint AJAX pour tout le monde
+        - { path: ^/product/\d+/availability$, roles: PUBLIC_ACCESS }
+        # Autoriser aussi les pages catalogue/fiche produit si tu veux
+        - { path: ^/products, roles: PUBLIC_ACCESS }
+        - { path: ^/product/\d+$, roles: PUBLIC_ACCESS }
+
+        # Et garder le panier protégé
+        - { path: ^/cart, allow_if: "user and user.isVerified()" }
+        - { path: ^/reservation, allow_if: "user and user.isVerified()" }
+        - { path: ^/reservations, allow_if: "user and user.isVerified()" }
+        - { path: ^/profile, roles: ROLE_USER }
+        # Role admin exclusivement
+        - { path: ^/admin, roles: ROLE_ADMIN }
+
 
 when@test:
     security:

@@ -61,5 +61,28 @@ class ReservationItemRepository extends ServiceEntityRepository
 
         return (int) $qb->getQuery()->getSingleScalarResult();
     }
+    public function getReservedQuantityForPeriodExcludingReservation(
+        int $productId,
+        \DateTimeImmutable $start,
+        \DateTimeImmutable $end,
+        array $blockingStatuses,
+        int $excludeReservationId
+    ): int {
+        $qb = $this->createQueryBuilder('ri')
+            ->select('COALESCE(SUM(ri.quantity), 0)')
+            ->innerJoin('ri.reservation', 'r')
+            ->where('IDENTITY(ri.product) = :pid')
+            ->andWhere('r.status IN (:statuses)')
+            ->andWhere('r.id != :excludeId')
+            ->andWhere('r.startDate <= :end')
+            ->andWhere('r.endDate >= :start')
+            ->setParameter('pid', $productId)
+            ->setParameter('statuses', $blockingStatuses)
+            ->setParameter('excludeId', $excludeReservationId)
+            ->setParameter('start', $start)
+            ->setParameter('end', $end);
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
 
 }

@@ -1,0 +1,153 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ product.name }}{% endblock %}
+
+{% block body %}
+
+    <div class="product-show">
+        <div class="product-show__media">
+            <div class="product-show__placeholder">
+                <div class="product-show__placeholder-title">Aperçu produit</div>
+                <div class="product-show__placeholder-sub">(images bientôt disponibles)</div>
+            </div>
+        </div>
+
+        <div class="product-show__side">
+            <a class="pill" href="{{ path('product_index') }}">Découvrir</a>
+
+            <h1 class="product-show__title">{{ product.name }}</h1>
+
+            <p class="product-show__desc">{{ product.description }}</p>
+
+            <div class="price-box">
+                <div class="price-box__col">
+                    <div class="price-box__label">Prix par jour</div>
+                    <div class="price-box__value price-box__value--accent">{{ product.pricePerDay }}€</div>
+                </div>
+                <div class="price-box__col">
+                    <div class="price-box__label">Caution (unitaire)</div>
+                    <div class="price-box__value">{{ product.depositUnit }}€</div>
+                </div>
+            </div>
+
+            <div class="info-box" id="availBox">
+                <span class="info-box__icon">ℹ️</span>
+                <span id="availText">Sélectionnez des dates pour voir la disponibilité</span>
+            </div>
+
+            <div class="card">
+                <div class="card__title">📅 Sélectionner les dates</div>
+
+                {#  ✅ IMPORTANT : les dates sont dans CE formulaire (plus besoin de hidden)  #}
+                {% if app.user %}
+                    {% set today = "now"|date("Y-m-d") %}
+                    <form method="post" action="{{ path('cart_add', {id: product.id}) }}" id="addToCartForm" class="form">
+                        <input type="hidden" name="_token" value="{{ csrf_token('cart_add_' ~ product.id) }}">
+
+                        <div class="form__grid">
+                            <div class="field">
+                                <div class="field__label">Date de début</div>
+                                <input type="date" min="{{ today }}" name="startDate" id="startDate" required class="field__input">
+                            </div>
+
+                            <div class="field">
+                                <div class="field__label">Date de fin</div>
+                                <input type="date" name="endDate" id="endDate" min="{{ today }}" required class="field__input">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <div class="field__label">Quantité</div>
+                            <input type="number" name="quantity" id="qty" value="1" min="1" step="1" required class="field__input">
+                        </div>
+
+                        <button type="submit" id="btnAdd" class="btn btn--primary">
+                            Ajouter au panier
+                        </button>
+                    </form>
+                {% else %}
+                    {# non connecté : il peut voir la dispo, mais pas réserver #}
+                    <form class="form">
+                        <div class="form__grid">
+                            <div class="field">
+                                <div class="field__label">Date de début</div>
+                                <input type="date" id="startDate" required class="field__input">
+                            </div>
+
+                            <div class="field">
+                                <div class="field__label">Date de fin</div>
+                                <input type="date" id="endDate" required class="field__input">
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <div class="field__label">Quantité</div>
+                            <input type="number" value="1" min="1" step="1" class="field__input" disabled>
+                        </div>
+
+                        <a href="{{ path('app_login') }}" class="btn btn--primary btn--link">
+                            Se connecter pour réserver
+                        </a>
+
+                        <div class="hint">
+                            Vous pouvez consulter la disponibilité sans compte, mais la réservation nécessite une connexion.
+                        </div>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const startEl = document.getElementById('startDate');
+            const endEl   = document.getElementById('endDate');
+            const textEl  = document.getElementById('availText');
+            const btnAdd  = document.getElementById('btnAdd'); // null si non connecté
+
+            let timer = null;
+
+            function setInfo(msg) {
+                if (textEl) textEl.textContent = msg;
+            }
+
+            function refreshAvailability() {
+                const s = startEl?.value;
+                const e = endEl?.value;
+
+                if (!s || !e) {
+                    setInfo('Sélectionnez des dates pour voir la disponibilité');
+                    if (btnAdd) btnAdd.disabled = false;
+                    return;
+                }
+
+                fetch(`{{ path('product_availability', {id: product.id}) }}?startDate=${encodeURIComponent(s)}&endDate=${encodeURIComponent(e)}`)
+                    .then(r => r.json())
+                    .then(data => {
+                        if (!data || data.error) {
+                            setInfo('⚠️ ' + (data?.error || 'Erreur'));
+                            if (btnAdd) btnAdd.disabled = true;
+                            return;
+                        }
+
+                        setInfo(`Disponible sur ces dates : ${data.available}`);
+
+                        if (btnAdd) btnAdd.disabled = (data.available <= 0);
+                    })
+                    .catch(() => {
+                        setInfo('⚠️ Erreur de vérification disponibilité.');
+                        if (btnAdd) btnAdd.disabled = false;
+                    });
+            }
+
+            function schedule() {
+                clearTimeout(timer);
+                timer = setTimeout(refreshAvailability, 250);
+            }
+
+            startEl?.addEventListener('change', schedule);
+            endEl?.addEventListener('change', schedule);
+        })();
+    </script>
+
+{% endblock %}

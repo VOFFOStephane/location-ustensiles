@@ -7,6 +7,7 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use App\Entity\ReservationDateChangeRequest;
 
 #[ORM\Entity(repositoryClass: ReservationRepository::class)]
 #[ORM\Table(name: 'reservation')]
@@ -32,7 +33,7 @@ class Reservation
     private ?int $id = null;
 
     #[ORM\Column(length: 20)]
-    private string $reference;
+    private string $reference='';
 
     #[ORM\Column]
     private ?\DateTimeImmutable $startDate = null;
@@ -78,11 +79,23 @@ class Reservation
         orphanRemoval: true
     )]
     private Collection $items;
+    /**
+     * @var Collection<int, ReservationDateChangeRequest>
+     */
+    #[ORM\OneToMany(
+        targetEntity: ReservationDateChangeRequest::class,
+        mappedBy: 'reservation',
+        cascade: ['persist', 'remove'],
+        orphanRemoval: true
+    )]
+    private Collection $dateChangeRequests;
 
     public function __construct()
     {
         $this->items = new ArrayCollection();
+        $this->dateChangeRequests = new ArrayCollection();
     }
+
 
     public function getId(): ?int { return $this->id; }
 
@@ -158,7 +171,14 @@ class Reservation
         $this->user = $user;
         return $this;
     }
-
+    public function addDateChangeRequest(ReservationDateChangeRequest $req): static
+    {
+        if (!$this->dateChangeRequests->contains($req)) {
+            $this->dateChangeRequests->add($req);
+            $req->setReservation($this);
+        }
+        return $this;
+    }
     #[ORM\PrePersist]
     public function onPrePersist(): void
     {
@@ -193,6 +213,10 @@ class Reservation
         $this->items->removeElement($item);
         return $this;
     }
+    /**
+     * @return Collection<int, ReservationDateChangeRequest>
+     */
+    public function getDateChangeRequests(): Collection { return $this->dateChangeRequests; }
 
     // Helpers
     public function isPending(): bool { return $this->status === self::STATUS_PENDING; }

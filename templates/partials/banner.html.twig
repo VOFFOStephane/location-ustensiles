@@ -1,0 +1,6 @@
+<section class="hero">
+    <h1>{{ title|default('Catalogue') }}</h1>
+    {% if subtitle|default('') %}
+        <p>{{ subtitle }}</p>
+    {% endif %}
+</section>

@@ -1,0 +1,38 @@
+{% extends 'base.html.twig' %}
+{% block title %}Mon profil{% endblock %}
+
+{% block body %}
+    <div class="kr-main">
+        <div class="auth">
+            <div class="auth-card">
+                <h1 class="auth-title">Mon profil</h1>
+                <p class="auth-subtitle">Gère tes informations personnelles.</p>
+
+                <div class="card">
+                    <div class="field">
+                        <div class="field__label">Prénom</div>
+                        <div><strong>{{ user.firstname }}</strong></div>
+                    </div>
+                    <div class="field">
+                        <div class="field__label">Nom</div>
+                        <div><strong>{{ user.lastname }}</strong></div>
+                    </div>
+                    <div class="field">
+                        <div class="field__label">Email</div>
+                        <div><strong>{{ user.email }}</strong></div>
+                    </div>
+                    <div class="field">
+                        <div class="field__label">Email vérifié</div>
+                        <div><strong>{{ user.isVerified ? 'Oui ✅' : 'Non ❌' }}</strong></div>
+                    </div>
+                </div>
+
+                <div style="display:grid; gap:10px; margin-top:14px;">
+                    <a class="btn btn--primary btn--link" href="{{ path('profile_edit') }}">Modifier mes informations</a>
+                    <a class="btn btn--ghost btn--link" href="{{ path('profile_password') }}">Changer mon mot de passe</a>
+                    <a class="btn btn--ghost btn--link" href="{{ path('profile_reservations') }}">Voir mon historique</a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}

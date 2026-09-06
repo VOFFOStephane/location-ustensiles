@@ -22,6 +22,7 @@ readonly final class ReservationCreator
      */
     public function createFromCart(User $user, array $cartSummary): Reservation
     {
+
         $lines = $cartSummary['lines'] ?? [];
         if (count($lines) === 0) {
             throw new \InvalidArgumentException('Panier vide.');
@@ -29,7 +30,7 @@ readonly final class ReservationCreator
 
         $start = $lines[0]['startDate'];
         $end   = $lines[0]['endDate'];
-
+        if ($end < $start) { throw new \InvalidArgumentException("Dates invalides : fin avant début."); }
         foreach ($lines as $line) {
             if ($line['startDate'] != $start || $line['endDate'] != $end) {
                 throw new \InvalidArgumentException(

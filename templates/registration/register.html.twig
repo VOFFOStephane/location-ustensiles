@@ -1,0 +1,59 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Inscription{% endblock %}
+
+{% block body %}
+    <div class="kr-main">
+        <div class="auth">
+            <div class="auth-card">
+                <h1 class="auth-title">Créer un compte</h1>
+                <p class="auth-subtitle">Inscris-toi pour pouvoir réserver des ustensiles.</p>
+
+                {{ form_start(registrationForm, { attr: { class: 'form' } }) }}
+
+                <div class="form__grid">
+                    <div class="field">
+                        {{ form_label(registrationForm.firstname, null, {'label_attr': {'class': 'field__label'}}) }}
+                        {{ form_widget(registrationForm.firstname, {'attr': {'class': 'field__input', 'placeholder': 'Ex: Stéphane'}}) }}
+                        {{ form_errors(registrationForm.firstname) }}
+                    </div>
+
+                    <div class="field">
+                        {{ form_label(registrationForm.lastname, null, {'label_attr': {'class': 'field__label'}}) }}
+                        {{ form_widget(registrationForm.lastname, {'attr': {'class': 'field__input', 'placeholder': 'Ex: VOFFO'}}) }}
+                        {{ form_errors(registrationForm.lastname) }}
+                    </div>
+                </div>
+
+                <div class="field">
+                    {{ form_label(registrationForm.email, null, {'label_attr': {'class': 'field__label'}}) }}
+                    {{ form_widget(registrationForm.email, {'attr': {'class': 'field__input', 'placeholder': 'email@exemple.com'}}) }}
+                    {{ form_errors(registrationForm.email) }}
+                </div>
+
+                <div class="field">
+                    {{ form_label(registrationForm.plainPassword, 'Mot de passe', {'label_attr': {'class': 'field__label'}}) }}
+                    {{ form_widget(registrationForm.plainPassword, {'attr': {'class': 'field__input', 'placeholder': 'Au moins 6 caractères'}}) }}
+                    {{ form_errors(registrationForm.plainPassword) }}
+                </div>
+
+                <div class="field auth-check">
+                    {{ form_widget(registrationForm.agreeTerms, {'attr': {'class': 'auth-check__box'}}) }}
+                    <div class="auth-check__text">
+                        {{ form_label(registrationForm.agreeTerms, "J'accepte les conditions d'utilisation") }}
+                        {{ form_errors(registrationForm.agreeTerms) }}
+                    </div>
+                </div>
+
+                <button class="btn btn--primary" type="submit">Créer mon compte</button>
+
+                <p class="hint auth-foot">
+                    Déjà un compte ?
+                    <a href="{{ path('app_login') }}">Se connecter</a>
+                </p>
+
+                {{ form_end(registrationForm) }}
+            </div>
+        </div>
+    </div>
+{% endblock %}

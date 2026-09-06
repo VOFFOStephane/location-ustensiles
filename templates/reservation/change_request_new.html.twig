@@ -1,0 +1,120 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Demande de modification{% endblock %}
+
+{% block body %}
+    <div class="kr-main">
+        <div class="reservation-show__back">
+            <a href="{{ path('reservation_show', {id: reservation.id}) }}" class="reservation-back-link">
+                ← Retour à la réservation
+            </a>
+        </div>
+
+        <article class="req-card">
+            <header class="req-head">
+                <div>
+                    <h1 class="req-title">Demande de modification de date</h1>
+                    <p class="req-subtitle">
+                        Réservation {{ reservation.reference }} — dates actuelles :
+                        {{ reservation.startDate|date('d/m/Y') }} → {{ reservation.endDate|date('d/m/Y') }}
+                    </p>
+                </div>
+            </header>
+
+            {# ===== Alert délai ===== #}
+            {% if not canRequest %}
+                <div class="req-alert req-alert--danger">
+                    <div class="req-alert__title">
+                        ⛔ Délai non respecté :
+                        {% if daysBeforeStart < 0 %}
+                            votre date de retrait est passée depuis {{ daysBeforeStart|abs }} jour(s).
+                        {% else %}
+                            il reste seulement {{ daysBeforeStart }} jour(s) avant votre date de retrait.
+                        {% endif %}
+                    </div>
+                    <div class="req-alert__text">
+                        ⚠️ Les modifications doivent être demandées au moins {{ minDays }} jours avant.
+                        Votre acompte ne sera pas remboursable en cas d’annulation.
+                    </div>
+                </div>
+            {% endif %}
+
+            {# ===== Alert demande en attente ===== #}
+            {% if pendingRequest %}
+                <div class="req-alert req-alert--info">
+                    <div class="req-alert__title">ℹ️ Une demande de modification est déjà en attente.</div>
+                    <div class="req-alert__text">
+                        Vous ne pouvez pas en envoyer une nouvelle tant que l’administrateur n’a pas traité la demande.
+                    </div>
+                </div>
+            {% endif %}
+
+            {# ===== Dates actuelles ===== #}
+            <section class="req-box">
+                <div class="req-box__title">Dates actuelles</div>
+                <div class="req-current-grid">
+                    <div>
+                        <div class="req-label">Date de retrait</div>
+                        <div class="req-value">{{ reservation.startDate|date('l d F Y') }}</div>
+                    </div>
+                    <div>
+                        <div class="req-label">Date de retour</div>
+                        <div class="req-value">{{ reservation.endDate|date('l d F Y') }}</div>
+                    </div>
+                </div>
+            </section>
+
+            {# ===== Form ===== #}
+            <section class="req-form">
+                {{ form_start(form) }}
+
+                <div class="req-grid">
+                    <div class="field">
+                        <div class="req-field-title">📅 Nouvelle date de retrait</div>
+                        {{ form_widget(form.newStartDate, { attr: { class: 'field__input', min: minDate } }) }}
+                        {{ form_errors(form.newStartDate) }}
+                    </div>
+
+                    <div class="field">
+                        <div class="req-field-title">📅 Nouvelle date de retour</div>
+                        {{ form_widget(form.newEndDate, { attr: { class: 'field__input', min: minDate } }) }}
+                        {{ form_errors(form.newEndDate) }}
+                    </div>
+                </div>
+
+                <div class="field">
+                    <div class="req-field-title">Raison de la modification</div>
+                    {{ form_widget(form.reason, { attr: { class: 'req-textarea', placeholder: 'Expliquez pourquoi vous souhaitez modifier les dates...' } }) }}
+                    {{ form_errors(form.reason) }}
+                </div>
+
+                <div class="req-actions">
+                    <a class="btn btn--ghost req-cancel" href="{{ path('reservation_show', {id: reservation.id}) }}">Annuler</a>
+
+                    <button
+                        class="btn btn--primary req-submit"
+                        type="submit"
+                        {% if pendingRequest or not canRequest %}disabled{% endif %}
+                    >
+                        Envoyer la demande
+                    </button>
+                </div>
+
+                <div class="req-alt">
+                    💡 <strong>Alternative :</strong>
+                    si vous ne pouvez pas respecter les dates actuelles, vous pouvez annuler votre réservation.
+                    {% if not canRequest %}
+                        Cependant, l’acompte ne sera pas remboursé car le délai de {{ minDays }} jours n’est pas respecté.
+                    {% endif %}
+                </div>
+
+                {{ form_end(form) }}
+            </section>
+
+            <div class="req-note">
+                ⚠️ La modification concerne uniquement les dates.
+                Pour augmenter une quantité, il faut faire une nouvelle réservation.
+            </div>
+        </article>
+    </div>
+{% endblock %}

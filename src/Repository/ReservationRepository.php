@@ -23,6 +23,7 @@ class ReservationRepository extends ServiceEntityRepository
         return $this->createQueryBuilder('r')
             ->leftJoin('r.items', 'i')->addSelect('i')
             ->leftJoin('i.product', 'p')->addSelect('p')
+            ->leftJoin('r.dateChangeRequests', 'dcr')->addSelect('dcr')
             ->andWhere('r.id = :id')
             ->andWhere('r.user = :user')
             ->setParameter('id', $reservationId)

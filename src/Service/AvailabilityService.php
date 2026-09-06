@@ -16,11 +16,7 @@ final class AvailabilityService
 
     public function getAvailableQuantity(int $productId, \DateTimeImmutable $start, \DateTimeImmutable $end): int
     {
-        $product = $this->products->find($productId);
-        if (!$product) {
-            throw new \InvalidArgumentException('Produit introuvable');
-        }
-
+        $product = $this->getProductOrFail($productId);
         return $this->getAvailableQuantityForProduct($product, $start, $end);
     }
 
@@ -30,11 +26,7 @@ final class AvailabilityService
             $product->getId(),
             $start,
             $end,
-            Reservation::BLOCKING_STATUSES ?? [
-            Reservation::STATUS_PENDING,
-            Reservation::STATUS_VALIDATED,
-            Reservation::STATUS_IN_PROGRESS,
-        ]
+            Reservation::BLOCKING_STATUSES
         );
 
         return max(0, $product->getQuantityTotal() - $reserved);
@@ -42,11 +34,7 @@ final class AvailabilityService
 
     public function assertAvailable(int $productId, int $qty, \DateTimeImmutable $start, \DateTimeImmutable $end): void
     {
-        $product = $this->products->find($productId);
-        if (!$product) {
-            throw new \InvalidArgumentException('Produit introuvable');
-        }
-
+        $product = $this->getProductOrFail($productId);
         $this->assertAvailableProduct($product, $qty, $start, $end);
     }
 
@@ -68,5 +56,33 @@ final class AvailabilityService
                 $available
             ));
         }
+    }
+
+    public function getAvailableQuantityExcludingReservation(
+        int $productId,
+        \DateTimeImmutable $start,
+        \DateTimeImmutable $end,
+        int $excludeReservationId
+    ): int {
+        $product = $this->getProductOrFail($productId);
+
+        $reserved = $this->items->getReservedQuantityForPeriodExcludingReservation(
+            $productId,
+            $start,
+            $end,
+            Reservation::BLOCKING_STATUSES,
+            $excludeReservationId
+        );
+
+        return max(0, $product->getQuantityTotal() - $reserved);
+    }
+
+    private function getProductOrFail(int $productId): Product
+    {
+        $product = $this->products->find($productId);
+        if (!$product) {
+            throw new \InvalidArgumentException('Produit introuvable');
+        }
+        return $product;
     }
 }
